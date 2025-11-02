@@ -2,6 +2,7 @@ package com.chatapp.apigateway.filter;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.gateway.filter.GatewayFilter;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
@@ -12,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Mono;
 
+import java.security.Key;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -38,10 +40,20 @@ public class JwtAuthenticationFilter implements GatewayFilter {
                 return response.setComplete();
             }
 
-            final String token = request.getHeaders().getOrEmpty("Authorization").get(0).substring(7);
+            final String authHeader = request.getHeaders().getOrEmpty("Authorization").get(0);
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                ServerHttpResponse response = exchange.getResponse();
+                response.setStatusCode(HttpStatus.UNAUTHORIZED);
+                return response.setComplete();
+            }
+
+            final String token = authHeader.substring(7);
 
             try {
-                Claims claims = Jwts.parserBuilder().setSigningKey(secret).build().parseClaimsJws(token).getBody();
+                byte[] keyBytes = secret.getBytes();
+                Key key = Keys.hmacShaKeyFor(keyBytes);
+
+                Claims claims = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
                 ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
                         .header("id", String.valueOf(claims.get("id")))
                         .header("role", String.valueOf(claims.get("role")))
@@ -50,7 +62,7 @@ public class JwtAuthenticationFilter implements GatewayFilter {
 
             } catch (Exception e) {
                 ServerHttpResponse response = exchange.getResponse();
-                response.setStatusCode(HttpStatus.BAD_REQUEST);
+                response.setStatusCode(HttpStatus.UNAUTHORIZED);
 
                 return response.setComplete();
             }
