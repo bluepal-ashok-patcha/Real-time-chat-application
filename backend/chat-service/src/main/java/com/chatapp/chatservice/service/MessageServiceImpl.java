@@ -1,12 +1,15 @@
 package com.chatapp.chatservice.service;
 
+import com.chatapp.chatservice.dao.BlockDao;
+import com.chatapp.chatservice.dao.UserDao;
 import com.chatapp.chatservice.dto.MessageDto;
 import com.chatapp.chatservice.dto.UserDto;
 import com.chatapp.chatservice.kafka.KafkaProducer;
+import com.chatapp.chatservice.model.Group;
 import com.chatapp.chatservice.model.Message;
 import com.chatapp.chatservice.model.User;
+import com.chatapp.chatservice.repository.GroupRepository;
 import com.chatapp.chatservice.repository.MessageRepository;
-import com.chatapp.chatservice.repository.UserRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -16,16 +19,30 @@ public class MessageServiceImpl implements MessageService {
 
     private final MessageRepository messageRepository;
     private final KafkaProducer kafkaProducer;
-    private final UserRepository userRepository;
+    private final UserDao userDao;
+    private final BlockDao blockDao;
+    private final GroupRepository groupRepository;
 
-    public MessageServiceImpl(MessageRepository messageRepository, KafkaProducer kafkaProducer, UserRepository userRepository) {
+    public MessageServiceImpl(MessageRepository messageRepository, KafkaProducer kafkaProducer, UserDao userDao, BlockDao blockDao, GroupRepository groupRepository) {
         this.messageRepository = messageRepository;
         this.kafkaProducer = kafkaProducer;
-        this.userRepository = userRepository;
+        this.userDao = userDao;
+        this.blockDao = blockDao;
+        this.groupRepository = groupRepository;
     }
 
     @Override
     public MessageDto sendMessage(MessageDto messageDto) {
+        if (messageDto.getGroupId() != null) {
+            Group group = groupRepository.findById(messageDto.getGroupId()).orElseThrow(() -> new RuntimeException("Group not found"));
+            if (group.getUsers().stream().noneMatch(user -> user.getId().equals(messageDto.getSender().getId()))) {
+                throw new RuntimeException("You are not a member of this group");
+            }
+        } else {
+            if (blockDao.findByUserIdAndBlockedUserId(messageDto.getReceiver().getId(), messageDto.getSender().getId()).isPresent()) {
+                throw new RuntimeException("You have been blocked by this user");
+            }
+        }
         Message message = Message.builder()
                 .senderId(messageDto.getSender().getId())
                 .receiverId(messageDto.getReceiver().getId())
@@ -52,8 +69,8 @@ public class MessageServiceImpl implements MessageService {
     }
 
     private MessageDto convertToDto(Message message) {
-        User sender = userRepository.findById(message.getSenderId()).orElse(null);
-        User receiver = message.getReceiverId() != null ? userRepository.findById(message.getReceiverId()).orElse(null) : null;
+        User sender = userDao.findById(message.getSenderId()).orElse(null);
+        User receiver = message.getReceiverId() != null ? userDao.findById(message.getReceiverId()).orElse(null) : null;
         return MessageDto.builder()
                 .id(message.getId())
                 .sender(sender != null ? UserDto.builder().id(sender.getId()).username(sender.getUsername()).build() : null)

@@ -32,6 +32,7 @@ public class WebSocketEventListener {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
         String username = headerAccessor.getUser().getName();
         onlineUsers.add(username);
+        headerAccessor.getSessionAttributes().put("username", username);
 
         ChatMessage chatMessage = new ChatMessage();
         chatMessage.setType(MessageType.JOIN);

@@ -16,6 +16,10 @@ public class MessageListener {
 
     @KafkaListener(topics = "messages", groupId = "messaging-group")
     public void listen(MessageDto messageDto) {
-        messagingTemplate.convertAndSend("/topic/public", messageDto);
+        if (messageDto.getGroupId() != null) {
+            messagingTemplate.convertAndSend("/topic/" + messageDto.getGroupId(), messageDto);
+        } else {
+            messagingTemplate.convertAndSendToUser(messageDto.getReceiver().getUsername(), "/queue/reply", messageDto);
+        }
     }
 }

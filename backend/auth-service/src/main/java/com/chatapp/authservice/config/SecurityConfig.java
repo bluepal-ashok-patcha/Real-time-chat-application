@@ -1,5 +1,6 @@
 package com.chatapp.authservice.config;
 
+import com.chatapp.authservice.filter.AuthTokenFilter;
 import com.chatapp.authservice.service.UserDetailsServiceImpl;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

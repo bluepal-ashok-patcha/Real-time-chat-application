@@ -1,4 +1,4 @@
-package com.chatapp.authservice.config;
+package com.chatapp.authservice.filter;
 
 import com.chatapp.authservice.service.UserDetailsServiceImpl;
 import com.chatapp.authservice.util.JwtUtil;
