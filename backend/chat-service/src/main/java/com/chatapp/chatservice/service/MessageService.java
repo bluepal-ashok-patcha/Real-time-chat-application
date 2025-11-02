@@ -6,7 +6,7 @@ import org.springframework.data.domain.Pageable;
 
 public interface MessageService {
 
-    MessageDto sendMessage(MessageDto messageDto);
+    MessageDto sendMessage(Long senderId, MessageDto messageDto);
 
     Page<MessageDto> getChatHistory(Long userId1, Long userId2, Pageable pageable);
 

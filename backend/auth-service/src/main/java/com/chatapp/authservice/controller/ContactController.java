@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/users/{userId}/contacts")
+@RequestMapping("/api/contacts")
 public class ContactController {
 
     private final ContactService contactService;
@@ -18,18 +18,18 @@ public class ContactController {
     }
 
     @PostMapping("/{contactId}")
-    public ResponseEntity<ContactDto> addContact(@PathVariable Long userId, @PathVariable Long contactId) {
+    public ResponseEntity<ContactDto> addContact(@RequestHeader("id") Long userId, @PathVariable Long contactId) {
         return ResponseEntity.ok(contactService.addContact(userId, contactId));
     }
 
     @DeleteMapping("/{contactId}")
-    public ResponseEntity<Void> removeContact(@PathVariable Long userId, @PathVariable Long contactId) {
+    public ResponseEntity<Void> removeContact(@RequestHeader("id") Long userId, @PathVariable Long contactId) {
         contactService.removeContact(userId, contactId);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping
-    public ResponseEntity<List<ContactDto>> getContacts(@PathVariable Long userId) {
+    public ResponseEntity<List<ContactDto>> getContacts(@RequestHeader("id") Long userId) {
         return ResponseEntity.ok(contactService.getContacts(userId));
     }
 

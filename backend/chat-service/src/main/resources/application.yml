@@ -6,14 +6,27 @@ spring:
     name: chat-service
   datasource:
     url: jdbc:mysql://localhost:3306/chatapp
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    username: root
+    password: ashok
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
   kafka:
-    bootstrap-servers: ${KAFKA_BROKER}
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: messaging-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring:
+          json:
+            trusted:
+              packages: com.chatapp.chatservice.dto
 
 eureka:
   client:
@@ -21,7 +34,7 @@ eureka:
       defaultZone: http://localhost:8761/eureka/
 
 jwt:
-  secret: ${JWT_SECRET}
+  secret: YWHx2ms0eGJhYlN6TkJqbENBblUyTktWbEZka3NaNElvNkliZlJ3czZ1skhqbdjqw
 
 spring:
   redis:

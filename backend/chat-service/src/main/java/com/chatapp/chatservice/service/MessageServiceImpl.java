@@ -33,19 +33,20 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
-    public MessageDto sendMessage(MessageDto messageDto) {
+    public MessageDto sendMessage(Long senderId, MessageDto messageDto) {
+        messageDto.setSender(UserDto.builder().id(senderId).build());
         if (messageDto.getGroupId() != null) {
             if (groupUserDao.findByGroupId(messageDto.getGroupId()).stream()
-                    .noneMatch(groupUser -> groupUser.getUserId().equals(messageDto.getSender().getId()))) {
+                    .noneMatch(groupUser -> groupUser.getUserId().equals(senderId))) {
                 throw new RuntimeException("You are not a member of this group");
             }
         } else {
-            if (blockDao.findByUserIdAndBlockedUserId(messageDto.getReceiver().getId(), messageDto.getSender().getId()).isPresent()) {
+            if (blockDao.findByUserIdAndBlockedUserId(messageDto.getReceiver().getId(), senderId).isPresent()) {
                 throw new RuntimeException("You have been blocked by this user");
             }
         }
         Message message = Message.builder()
-                .senderId(messageDto.getSender().getId())
+                .senderId(senderId)
                 .receiverId(messageDto.getReceiver().getId())
                 .groupId(messageDto.getGroupId())
                 .content(messageDto.getContent())

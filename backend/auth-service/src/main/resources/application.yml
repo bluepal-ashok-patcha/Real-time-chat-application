@@ -6,8 +6,8 @@ spring:
     name: auth-service
   datasource:
     url: jdbc:mysql://localhost:3306/chatapp
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    username: root
+    password: ashok
   jpa:
     hibernate:
       ddl-auto: update
@@ -19,4 +19,4 @@ eureka:
       defaultZone: http://localhost:8761/eureka/
 
 jwt:
-  secret: ${JWT_SECRET}
+  secret: YWHx2ms0eGJhYlN6TkJqbENBblUyTktWbEZka3NaNElvNkliZlJ3czZ1skhqbdjqw

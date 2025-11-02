@@ -16,7 +16,8 @@ public class GroupController {
     }
 
     @PostMapping
-    public ResponseEntity<GroupDto> createGroup(@RequestBody GroupDto groupDto) {
+    public ResponseEntity<GroupDto> createGroup(@RequestHeader("id") Long creatorId, @RequestBody GroupDto groupDto) {
+        groupDto.setCreatedBy(creatorId);
         return ResponseEntity.ok(groupService.createGroup(groupDto));
     }
 
