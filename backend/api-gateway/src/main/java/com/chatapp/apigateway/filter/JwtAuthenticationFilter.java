@@ -36,7 +36,6 @@ public class JwtAuthenticationFilter implements GatewayFilter {
             if (!request.getHeaders().containsKey("Authorization")) {
                 ServerHttpResponse response = exchange.getResponse();
                 response.setStatusCode(HttpStatus.UNAUTHORIZED);
-
                 return response.setComplete();
             }
 
@@ -62,16 +61,12 @@ public class JwtAuthenticationFilter implements GatewayFilter {
                     return response.setComplete();
                 }
 
-                ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
-                        .header("id", String.valueOf(claims.get("id")))
-                        .header("role", role)
-                        .build();
-                return chain.filter(exchange.mutate().request(mutatedRequest).build());
+                // Validation successful, forward the original request without adding custom headers
+                return chain.filter(exchange);
 
             } catch (Exception e) {
                 ServerHttpResponse response = exchange.getResponse();
                 response.setStatusCode(HttpStatus.UNAUTHORIZED);
-
                 return response.setComplete();
             }
         }

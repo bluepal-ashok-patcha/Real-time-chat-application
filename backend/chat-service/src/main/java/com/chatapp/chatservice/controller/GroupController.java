@@ -2,6 +2,8 @@ package com.chatapp.chatservice.controller;
 
 import com.chatapp.chatservice.dto.GroupDto;
 import com.chatapp.chatservice.service.GroupService;
+import com.chatapp.chatservice.util.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -10,13 +12,22 @@ import org.springframework.web.bind.annotation.*;
 public class GroupController {
 
     private final GroupService groupService;
+    private final JwtUtil jwtUtil;
 
-    public GroupController(GroupService groupService) {
+    public GroupController(GroupService groupService, JwtUtil jwtUtil) {
         this.groupService = groupService;
+        this.jwtUtil = jwtUtil;
+    }
+
+    private Long getUserIdFromRequest(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        String token = header.substring(7);
+        return jwtUtil.getUserIdFromToken(token);
     }
 
     @PostMapping
-    public ResponseEntity<GroupDto> createGroup(@RequestHeader("id") Long creatorId, @RequestBody GroupDto groupDto) {
+    public ResponseEntity<GroupDto> createGroup(HttpServletRequest request, @RequestBody GroupDto groupDto) {
+        Long creatorId = getUserIdFromRequest(request);
         groupDto.setCreatedBy(creatorId);
         return ResponseEntity.ok(groupService.createGroup(groupDto));
     }

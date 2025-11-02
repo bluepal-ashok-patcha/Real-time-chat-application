@@ -2,6 +2,8 @@ package com.chatapp.authservice.controller;
 
 import com.chatapp.authservice.dto.ContactDto;
 import com.chatapp.authservice.service.ContactService;
+import com.chatapp.authservice.util.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -12,24 +14,35 @@ import java.util.List;
 public class ContactController {
 
     private final ContactService contactService;
+    private final JwtUtil jwtUtil;
 
-    public ContactController(ContactService contactService) {
+    public ContactController(ContactService contactService, JwtUtil jwtUtil) {
         this.contactService = contactService;
+        this.jwtUtil = jwtUtil;
+    }
+
+    private Long getUserIdFromRequest(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        String token = header.substring(7);
+        return jwtUtil.getUserIdFromToken(token);
     }
 
     @PostMapping("/{contactId}")
-    public ResponseEntity<ContactDto> addContact(@RequestHeader("id") Long userId, @PathVariable Long contactId) {
+    public ResponseEntity<ContactDto> addContact(HttpServletRequest request, @PathVariable Long contactId) {
+        Long userId = getUserIdFromRequest(request);
         return ResponseEntity.ok(contactService.addContact(userId, contactId));
     }
 
     @DeleteMapping("/{contactId}")
-    public ResponseEntity<Void> removeContact(@RequestHeader("id") Long userId, @PathVariable Long contactId) {
+    public ResponseEntity<Void> removeContact(HttpServletRequest request, @PathVariable Long contactId) {
+        Long userId = getUserIdFromRequest(request);
         contactService.removeContact(userId, contactId);
         return ResponseEntity.ok().build();
     }
 
     @GetMapping
-    public ResponseEntity<List<ContactDto>> getContacts(@RequestHeader("id") Long userId) {
+    public ResponseEntity<List<ContactDto>> getContacts(HttpServletRequest request) {
+        Long userId = getUserIdFromRequest(request);
         return ResponseEntity.ok(contactService.getContacts(userId));
     }
 
