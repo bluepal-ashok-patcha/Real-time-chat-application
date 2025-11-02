@@ -1,6 +1,6 @@
-package com.chatapp.chatservice.model;
+package com.chatapp.chatservice.dto;
 
-import jakarta.persistence.*;
+import com.chatapp.chatservice.model.MessageType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -8,26 +8,24 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "messages")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Message {
+public class MessageDto {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long senderId;
+    private UserDto sender;
 
-    private Long receiverId;
+    private UserDto receiver;
 
     private Long groupId;
 
     private String content;
 
     private LocalDateTime timestamp;
+
+    private MessageType type;
 
 }

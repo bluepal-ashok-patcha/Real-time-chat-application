@@ -6,28 +6,26 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDateTime;
+import java.util.Set;
 
 @Entity
-@Table(name = "messages")
+@Table(name = "groups")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class Message {
+public class Group {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long senderId;
+    private String name;
 
-    private Long receiverId;
-
-    private Long groupId;
-
-    private String content;
-
-    private LocalDateTime timestamp;
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "group_users",
+            joinColumns = @JoinColumn(name = "group_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_id"))
+    private Set<User> users;
 
 }
