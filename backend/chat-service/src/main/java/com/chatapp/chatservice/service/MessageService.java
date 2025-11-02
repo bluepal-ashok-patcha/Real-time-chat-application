@@ -12,4 +12,6 @@ public interface MessageService {
 
     Page<MessageDto> getGroupChatHistory(Long groupId, Pageable pageable);
 
+    void markMessageAsRead(Long messageId);
+
 }

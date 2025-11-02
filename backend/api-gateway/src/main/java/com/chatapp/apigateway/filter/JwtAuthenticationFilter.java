@@ -54,9 +54,17 @@ public class JwtAuthenticationFilter implements GatewayFilter {
                 Key key = Keys.hmacShaKeyFor(keyBytes);
 
                 Claims claims = Jwts.parserBuilder().setSigningKey(key).build().parseClaimsJws(token).getBody();
+                String role = (String) claims.get("role");
+
+                if (!"USER".equals(role)) {
+                    ServerHttpResponse response = exchange.getResponse();
+                    response.setStatusCode(HttpStatus.FORBIDDEN);
+                    return response.setComplete();
+                }
+
                 ServerHttpRequest mutatedRequest = exchange.getRequest().mutate()
                         .header("id", String.valueOf(claims.get("id")))
-                        .header("role", String.valueOf(claims.get("role")))
+                        .header("role", role)
                         .build();
                 return chain.filter(exchange.mutate().request(mutatedRequest).build());
 

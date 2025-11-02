@@ -1,14 +1,14 @@
 package com.chatapp.chatservice.service;
 
 import com.chatapp.chatservice.dao.BlockDao;
+import com.chatapp.chatservice.dao.GroupUserDao;
 import com.chatapp.chatservice.dao.UserDao;
 import com.chatapp.chatservice.dto.MessageDto;
+import com.chatapp.chatservice.dto.ReadReceipt;
 import com.chatapp.chatservice.dto.UserDto;
 import com.chatapp.chatservice.kafka.KafkaProducer;
-import com.chatapp.chatservice.model.Group;
 import com.chatapp.chatservice.model.Message;
-import com.chatapp.chatservice.model.User;
-import com.chatapp.chatservice.repository.GroupRepository;
+import com.chatapp.chatservice.model.MessageStatus;
 import com.chatapp.chatservice.repository.MessageRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -21,21 +21,22 @@ public class MessageServiceImpl implements MessageService {
     private final KafkaProducer kafkaProducer;
     private final UserDao userDao;
     private final BlockDao blockDao;
-    private final GroupRepository groupRepository;
+    private final GroupUserDao groupUserDao;
 
-    public MessageServiceImpl(MessageRepository messageRepository, KafkaProducer kafkaProducer, UserDao userDao, BlockDao blockDao, GroupRepository groupRepository) {
+    public MessageServiceImpl(MessageRepository messageRepository, KafkaProducer kafkaProducer, UserDao userDao,
+                              BlockDao blockDao, GroupUserDao groupUserDao) {
         this.messageRepository = messageRepository;
         this.kafkaProducer = kafkaProducer;
         this.userDao = userDao;
         this.blockDao = blockDao;
-        this.groupRepository = groupRepository;
+        this.groupUserDao = groupUserDao;
     }
 
     @Override
     public MessageDto sendMessage(MessageDto messageDto) {
         if (messageDto.getGroupId() != null) {
-            Group group = groupRepository.findById(messageDto.getGroupId()).orElseThrow(() -> new RuntimeException("Group not found"));
-            if (group.getUsers().stream().noneMatch(user -> user.getId().equals(messageDto.getSender().getId()))) {
+            if (groupUserDao.findByGroupId(messageDto.getGroupId()).stream()
+                    .noneMatch(groupUser -> groupUser.getUserId().equals(messageDto.getSender().getId()))) {
                 throw new RuntimeException("You are not a member of this group");
             }
         } else {
@@ -49,6 +50,7 @@ public class MessageServiceImpl implements MessageService {
                 .groupId(messageDto.getGroupId())
                 .content(messageDto.getContent())
                 .timestamp(messageDto.getTimestamp())
+                .status(MessageStatus.SENT)
                 .build();
         messageRepository.save(message);
         kafkaProducer.sendMessage(messageDto);
@@ -68,16 +70,33 @@ public class MessageServiceImpl implements MessageService {
         return messages.map(this::convertToDto);
     }
 
+    @Override
+    public void markMessageAsRead(Long messageId) {
+        Message message = messageRepository.findById(messageId).orElseThrow(() -> new RuntimeException("Message not found"));
+        message.setStatus(MessageStatus.READ);
+        messageRepository.save(message);
+        kafkaProducer.sendReadReceipt(ReadReceipt.builder()
+                .messageId(messageId)
+                .sender(userDao.findById(message.getSenderId()).get().getUsername())
+                .receiver(userDao.findById(message.getReceiverId()).get().getUsername())
+                .build());
+    }
+
     private MessageDto convertToDto(Message message) {
-        User sender = userDao.findById(message.getSenderId()).orElse(null);
-        User receiver = message.getReceiverId() != null ? userDao.findById(message.getReceiverId()).orElse(null) : null;
+        UserDto sender = userDao.findById(message.getSenderId())
+                .map(user -> UserDto.builder().id(user.getId()).username(user.getUsername()).build())
+                .orElse(null);
+        UserDto receiver = message.getReceiverId() != null ? userDao.findById(message.getReceiverId())
+                .map(user -> UserDto.builder().id(user.getId()).username(user.getUsername()).build())
+                .orElse(null) : null;
         return MessageDto.builder()
                 .id(message.getId())
-                .sender(sender != null ? UserDto.builder().id(sender.getId()).username(sender.getUsername()).build() : null)
-                .receiver(receiver != null ? UserDto.builder().id(receiver.getId()).username(receiver.getUsername()).build() : null)
+                .sender(sender)
+                .receiver(receiver)
                 .groupId(message.getGroupId())
                 .content(message.getContent())
                 .timestamp(message.getTimestamp())
+                .status(message.getStatus())
                 .build();
     }
 

@@ -22,3 +22,8 @@ eureka:
 
 jwt:
   secret: ${JWT_SECRET}
+
+spring:
+  redis:
+    host: localhost
+    port: 6379

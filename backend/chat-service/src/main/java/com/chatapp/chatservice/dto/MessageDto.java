@@ -1,5 +1,6 @@
 package com.chatapp.chatservice.dto;
 
+import com.chatapp.chatservice.model.MessageStatus;
 import com.chatapp.chatservice.model.MessageType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -27,5 +28,7 @@ public class MessageDto {
     private LocalDateTime timestamp;
 
     private MessageType type;
+
+    private MessageStatus status;
 
 }

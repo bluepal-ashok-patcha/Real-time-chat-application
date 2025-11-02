@@ -6,8 +6,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Set;
-
 @Entity
 @Table(name = "groups")
 @Data
@@ -23,11 +21,5 @@ public class Group {
     private String name;
 
     private Long createdBy;
-
-    @ManyToMany(fetch = FetchType.EAGER)
-    @JoinTable(name = "group_users",
-            joinColumns = @JoinColumn(name = "group_id"),
-            inverseJoinColumns = @JoinColumn(name = "user_id"))
-    private Set<User> users;
 
 }
