@@ -9,8 +9,14 @@ import org.springframework.kafka.config.TopicBuilder;
 public class KafkaTopicConfig {
 
     @Bean
-    public NewTopic topic() {
+    public NewTopic messagesTopic() {
         return TopicBuilder.name("messages")
+                .build();
+    }
+
+    @Bean
+    public NewTopic readReceiptsTopic() {
+        return TopicBuilder.name("read-receipts")
                 .build();
     }
 }
