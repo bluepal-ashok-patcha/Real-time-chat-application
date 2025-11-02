@@ -5,6 +5,8 @@ import com.chatapp.chatservice.dto.ChatMessage;
 import com.chatapp.chatservice.dto.MessageDto;
 import com.chatapp.chatservice.dto.TypingNotification;
 import com.chatapp.chatservice.service.MessageService;
+import com.chatapp.chatservice.util.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
@@ -24,11 +26,20 @@ public class ChatController {
     private final MessageService messageService;
     private final SimpMessageSendingOperations messagingTemplate;
     private final WebSocketEventListener webSocketEventListener;
+    private final JwtUtil jwtUtil;
 
-    public ChatController(MessageService messageService, SimpMessageSendingOperations messagingTemplate, WebSocketEventListener webSocketEventListener) {
+    public ChatController(MessageService messageService, SimpMessageSendingOperations messagingTemplate,
+                          WebSocketEventListener webSocketEventListener, JwtUtil jwtUtil) {
         this.messageService = messageService;
         this.messagingTemplate = messagingTemplate;
         this.webSocketEventListener = webSocketEventListener;
+        this.jwtUtil = jwtUtil;
+    }
+
+    private Long getUserIdFromRequest(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        String token = header.substring(7);
+        return jwtUtil.getUserIdFromToken(token);
     }
 
     @MessageMapping("/chat.sendMessage")
@@ -60,7 +71,8 @@ public class ChatController {
     }
 
     @PostMapping("/messages")
-    public ResponseEntity<MessageDto> sendMessage(@RequestHeader("id") Long senderId, @RequestBody MessageDto messageDto) {
+    public ResponseEntity<MessageDto> sendMessage(HttpServletRequest request, @RequestBody MessageDto messageDto) {
+        Long senderId = getUserIdFromRequest(request);
         return ResponseEntity.ok(messageService.sendMessage(senderId, messageDto));
     }
 
