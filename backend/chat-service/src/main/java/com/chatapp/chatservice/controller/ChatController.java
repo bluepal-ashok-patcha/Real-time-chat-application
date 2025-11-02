@@ -60,8 +60,8 @@ public class ChatController {
     }
 
     @PostMapping("/messages")
-    public ResponseEntity<MessageDto> sendMessage(@RequestBody MessageDto messageDto) {
-        return ResponseEntity.ok(messageService.sendMessage(messageDto));
+    public ResponseEntity<MessageDto> sendMessage(@RequestHeader("id") Long senderId, @RequestBody MessageDto messageDto) {
+        return ResponseEntity.ok(messageService.sendMessage(senderId, messageDto));
     }
 
     @GetMapping("/users/online")
