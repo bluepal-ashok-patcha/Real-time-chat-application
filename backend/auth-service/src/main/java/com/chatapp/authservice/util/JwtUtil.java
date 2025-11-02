@@ -1,6 +1,7 @@
 package com.chatapp.authservice.util;
 
 import com.chatapp.authservice.model.User;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;

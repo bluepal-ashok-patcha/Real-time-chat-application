@@ -12,7 +12,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.messaging.simp.SimpMessageHeaderAccessor;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
@@ -49,16 +48,6 @@ public class ChatController {
         } else {
             messagingTemplate.convertAndSendToUser(chatMessage.getReceiver(), "/queue/reply", chatMessage);
         }
-    }
-
-    @MessageMapping("/chat.addUser")
-    public void addUser(@Payload ChatMessage chatMessage,
-                               SimpMessageHeaderAccessor headerAccessor) {
-        // Add username in web socket session
-        headerAccessor.getSessionAttributes().put("username", chatMessage.getSender());
-        webSocketEventListener.getOnlineUsers().add(chatMessage.getSender());
-        chatMessage.setContent(String.join(",", webSocketEventListener.getOnlineUsers()));
-        messagingTemplate.convertAndSend("/topic/public", chatMessage);
     }
 
     @MessageMapping("/chat.typing")
