@@ -1,24 +1,20 @@
-package com.chatapp.chatservice.dto;
+package com.chatapp.chatservice.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Set;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class GroupDto {
+public class Contact {
 
     private Long id;
 
-    private String name;
+    private Long userId;
 
-    private Long createdBy;
-
-    private Set<UserDto> users;
+    private Long contactId;
 
 }

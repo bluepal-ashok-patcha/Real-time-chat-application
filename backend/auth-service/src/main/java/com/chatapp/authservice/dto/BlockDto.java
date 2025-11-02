@@ -1,24 +1,20 @@
-package com.chatapp.chatservice.dto;
+package com.chatapp.authservice.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.Set;
-
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class GroupDto {
+public class BlockDto {
 
     private Long id;
 
-    private String name;
+    private UserDto user;
 
-    private Long createdBy;
-
-    private Set<UserDto> users;
+    private UserDto blockedUser;
 
 }

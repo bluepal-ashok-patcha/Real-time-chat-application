@@ -22,6 +22,8 @@ public class Group {
 
     private String name;
 
+    private Long createdBy;
+
     @ManyToMany(fetch = FetchType.EAGER)
     @JoinTable(name = "group_users",
             joinColumns = @JoinColumn(name = "group_id"),
