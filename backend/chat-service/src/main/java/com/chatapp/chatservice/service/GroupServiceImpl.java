@@ -1,12 +1,13 @@
 package com.chatapp.chatservice.service;
 
 import com.chatapp.chatservice.dao.ContactDao;
-import com.chatapp.chatservice.dao.GroupUserDao;
 import com.chatapp.chatservice.dao.UserDao;
 import com.chatapp.chatservice.dto.GroupDto;
 import com.chatapp.chatservice.dto.UserDto;
 import com.chatapp.chatservice.model.Group;
+import com.chatapp.chatservice.model.GroupUser;
 import com.chatapp.chatservice.repository.GroupRepository;
+import com.chatapp.chatservice.repository.GroupUserRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.stream.Collectors;
@@ -17,13 +18,14 @@ public class GroupServiceImpl implements GroupService {
     private final GroupRepository groupRepository;
     private final UserDao userDao;
     private final ContactDao contactDao;
-    private final GroupUserDao groupUserDao;
+    private final GroupUserRepository groupUserRepository;
 
-    public GroupServiceImpl(GroupRepository groupRepository, UserDao userDao, ContactDao contactDao, GroupUserDao groupUserDao) {
+    public GroupServiceImpl(GroupRepository groupRepository, UserDao userDao, ContactDao contactDao,
+                          GroupUserRepository groupUserRepository) {
         this.groupRepository = groupRepository;
         this.userDao = userDao;
         this.contactDao = contactDao;
-        this.groupUserDao = groupUserDao;
+        this.groupUserRepository = groupUserRepository;
     }
 
     @Override
@@ -33,7 +35,7 @@ public class GroupServiceImpl implements GroupService {
                 .createdBy(groupDto.getCreatedBy())
                 .build();
         groupRepository.save(group);
-        groupUserDao.addUserToGroup(group.getId(), group.getCreatedBy());
+        groupUserRepository.save(GroupUser.builder().groupId(group.getId()).userId(group.getCreatedBy()).build());
         return convertToDto(group);
     }
 
@@ -44,13 +46,13 @@ public class GroupServiceImpl implements GroupService {
         if (contactDao.findByUserIdAndContactId(group.getCreatedBy(), userId).isEmpty()) {
             throw new RuntimeException("You can only add your own contacts to a group");
         }
-        groupUserDao.addUserToGroup(groupId, userId);
+        groupUserRepository.save(GroupUser.builder().groupId(groupId).userId(userId).build());
         return convertToDto(group);
     }
 
     @Override
     public GroupDto removeUserFromGroup(Long groupId, Long userId) {
-        groupUserDao.removeUserFromGroup(groupId, userId);
+        groupUserRepository.deleteById(new GroupUser.GroupUserId(groupId, userId));
         Group group = groupRepository.findById(groupId).orElseThrow(() -> new RuntimeException("Group not found"));
         return convertToDto(group);
     }
@@ -60,7 +62,7 @@ public class GroupServiceImpl implements GroupService {
                 .id(group.getId())
                 .name(group.getName())
                 .createdBy(group.getCreatedBy())
-                .users(groupUserDao.findByGroupId(group.getId()).stream()
+                .users(groupUserRepository.findByGroupId(group.getId()).stream()
                         .map(groupUser -> userDao.findById(groupUser.getUserId())
                                 .map(user -> UserDto.builder()
                                         .id(user.getId())

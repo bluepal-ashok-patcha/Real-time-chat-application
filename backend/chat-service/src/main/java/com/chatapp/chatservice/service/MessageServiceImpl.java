@@ -1,7 +1,6 @@
 package com.chatapp.chatservice.service;
 
 import com.chatapp.chatservice.dao.BlockDao;
-import com.chatapp.chatservice.dao.GroupUserDao;
 import com.chatapp.chatservice.dao.UserDao;
 import com.chatapp.chatservice.dto.MessageDto;
 import com.chatapp.chatservice.dto.ReadReceipt;
@@ -9,6 +8,7 @@ import com.chatapp.chatservice.dto.UserDto;
 import com.chatapp.chatservice.kafka.KafkaProducer;
 import com.chatapp.chatservice.model.Message;
 import com.chatapp.chatservice.model.MessageStatus;
+import com.chatapp.chatservice.repository.GroupUserRepository;
 import com.chatapp.chatservice.repository.MessageRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,22 +23,22 @@ public class MessageServiceImpl implements MessageService {
     private final KafkaProducer kafkaProducer;
     private final UserDao userDao;
     private final BlockDao blockDao;
-    private final GroupUserDao groupUserDao;
+    private final GroupUserRepository groupUserRepository;
 
     public MessageServiceImpl(MessageRepository messageRepository, KafkaProducer kafkaProducer, UserDao userDao,
-                              BlockDao blockDao, GroupUserDao groupUserDao) {
+                              BlockDao blockDao, GroupUserRepository groupUserRepository) {
         this.messageRepository = messageRepository;
         this.kafkaProducer = kafkaProducer;
         this.userDao = userDao;
         this.blockDao = blockDao;
-        this.groupUserDao = groupUserDao;
+        this.groupUserRepository = groupUserRepository;
     }
 
     @Override
     public MessageDto sendMessage(Long senderId, MessageDto messageDto) {
         messageDto.setSender(UserDto.builder().id(senderId).build());
         if (messageDto.getGroupId() != null) {
-            if (groupUserDao.findByGroupId(messageDto.getGroupId()).stream()
+            if (groupUserRepository.findByGroupId(messageDto.getGroupId()).stream()
                     .noneMatch(groupUser -> groupUser.getUserId().equals(senderId))) {
                 throw new RuntimeException("You are not a member of this group");
             }
@@ -77,7 +77,7 @@ public class MessageServiceImpl implements MessageService {
     public void markMessageAsRead(Long userId, Long messageId) {
         Message message = messageRepository.findById(messageId).orElseThrow(() -> new RuntimeException("Message not found"));
         if (message.getGroupId() != null) {
-            if (groupUserDao.findByGroupId(message.getGroupId()).stream()
+            if (groupUserRepository.findByGroupId(message.getGroupId()).stream()
                     .noneMatch(groupUser -> groupUser.getUserId().equals(userId))) {
                 throw new RuntimeException("You are not a member of this group");
             }
