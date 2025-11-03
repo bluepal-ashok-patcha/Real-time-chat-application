@@ -43,13 +43,16 @@ public class MessageServiceImpl implements MessageService {
                 throw new RuntimeException("You are not a member of this group");
             }
         } else {
+            if (messageDto.getReceiver() == null || messageDto.getReceiver().getId() == null) {
+                throw new IllegalArgumentException("Receiver cannot be null for private messages");
+            }
             if (blockDao.findByUserIdAndBlockedUserId(messageDto.getReceiver().getId(), senderId).isPresent()) {
                 throw new RuntimeException("You have been blocked by this user");
             }
         }
         Message message = Message.builder()
                 .senderId(senderId)
-                .receiverId(messageDto.getReceiver().getId())
+                .receiverId(messageDto.getReceiver() != null ? messageDto.getReceiver().getId() : null)
                 .groupId(messageDto.getGroupId())
                 .content(messageDto.getContent())
                 .timestamp(LocalDateTime.now())
