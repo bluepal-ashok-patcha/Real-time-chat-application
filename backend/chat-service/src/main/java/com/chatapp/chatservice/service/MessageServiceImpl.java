@@ -14,6 +14,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+
 @Service
 public class MessageServiceImpl implements MessageService {
 
@@ -50,12 +52,12 @@ public class MessageServiceImpl implements MessageService {
                 .receiverId(messageDto.getReceiver().getId())
                 .groupId(messageDto.getGroupId())
                 .content(messageDto.getContent())
-                .timestamp(messageDto.getTimestamp())
+                .timestamp(LocalDateTime.now())
                 .status(MessageStatus.SENT)
                 .build();
-        messageRepository.save(message);
-        kafkaProducer.sendMessage(messageDto);
-        return messageDto;
+        Message savedMessage = messageRepository.save(message);
+        kafkaProducer.sendMessage(convertToDto(savedMessage));
+        return convertToDto(savedMessage);
     }
 
     @Override

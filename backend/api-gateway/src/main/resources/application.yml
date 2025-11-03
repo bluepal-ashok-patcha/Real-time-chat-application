@@ -11,4 +11,4 @@ eureka:
       defaultZone: http://localhost:8761/eureka/
 
 jwt:
-  secret: YWHx2ms0eGJhYlN6TkJqbENBblUyTktWbEZka3NaNElvNkliZlJ3czZ1skhqbdjqw
+  secret: ${JWT_SECRET}
