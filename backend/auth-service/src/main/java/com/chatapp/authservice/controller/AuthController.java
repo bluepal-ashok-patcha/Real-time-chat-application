@@ -6,6 +6,8 @@ import com.chatapp.authservice.dto.RegisterRequest;
 import com.chatapp.authservice.dto.UserDto;
 import com.chatapp.authservice.model.User;
 import com.chatapp.authservice.service.AuthService;
+import com.chatapp.authservice.util.JwtUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -15,9 +17,11 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final JwtUtil jwtUtil;
 
-    public AuthController(AuthService authService) {
+    public AuthController(AuthService authService, JwtUtil jwtUtil) {
         this.authService = authService;
+        this.jwtUtil = jwtUtil;
     }
 
     @PostMapping("/register")
@@ -26,6 +30,7 @@ public class AuthController {
         UserDto userDto = UserDto.builder()
                 .id(user.getId())
                 .username(user.getUsername())
+                .email(user.getEmail())
                 .role(user.getRole())
                 .build();
         return ResponseEntity.ok(userDto);
@@ -37,8 +42,11 @@ public class AuthController {
     }
 
     @GetMapping("/hello")
-    public ResponseEntity<String> hello() {
-        return ResponseEntity.ok("Hello from Auth Service");
+    public ResponseEntity<String> hello(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        String token = header.substring(7);
+        Long userId = jwtUtil.getUserIdFromToken(token);
+        return ResponseEntity.ok("Hello from Auth Service, user id: " + userId);
     }
 
 }
