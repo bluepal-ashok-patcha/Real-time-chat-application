@@ -82,8 +82,9 @@ public class ChatController {
     }
 
     @PostMapping("/messages/{messageId}/read")
-    public ResponseEntity<Void> markMessageAsRead(@PathVariable Long messageId) {
-        messageService.markMessageAsRead(messageId);
+    public ResponseEntity<Void> markMessageAsRead(HttpServletRequest request, @PathVariable Long messageId) {
+        Long userId = getUserIdFromRequest(request);
+        messageService.markMessageAsRead(userId, messageId);
         return ResponseEntity.ok().build();
     }
 

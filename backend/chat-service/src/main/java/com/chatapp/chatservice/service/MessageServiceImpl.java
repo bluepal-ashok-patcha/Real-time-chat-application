@@ -74,8 +74,18 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
-    public void markMessageAsRead(Long messageId) {
+    public void markMessageAsRead(Long userId, Long messageId) {
         Message message = messageRepository.findById(messageId).orElseThrow(() -> new RuntimeException("Message not found"));
+        if (message.getGroupId() != null) {
+            if (groupUserDao.findByGroupId(message.getGroupId()).stream()
+                    .noneMatch(groupUser -> groupUser.getUserId().equals(userId))) {
+                throw new RuntimeException("You are not a member of this group");
+            }
+        } else {
+            if (!message.getReceiverId().equals(userId)) {
+                throw new RuntimeException("You are not authorized to mark this message as read");
+            }
+        }
         message.setStatus(MessageStatus.READ);
         messageRepository.save(message);
         kafkaProducer.sendReadReceipt(ReadReceipt.builder()
