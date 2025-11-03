@@ -6,10 +6,9 @@ import com.chatapp.authservice.model.Block;
 import com.chatapp.authservice.model.User;
 import com.chatapp.authservice.repository.BlockRepository;
 import com.chatapp.authservice.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class BlockServiceImpl implements BlockService {
@@ -42,10 +41,8 @@ public class BlockServiceImpl implements BlockService {
     }
 
     @Override
-    public List<BlockDto> getBlockedUsers(Long userId) {
-        return blockRepository.findByUserId(userId).stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
+    public Page<BlockDto> getBlockedUsers(Long userId, Pageable pageable) {
+        return blockRepository.findByUserId(userId, pageable).map(this::convertToDto);
     }
 
     private BlockDto convertToDto(Block block) {

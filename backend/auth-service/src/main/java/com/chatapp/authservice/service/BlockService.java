@@ -1,8 +1,8 @@
 package com.chatapp.authservice.service;
 
 import com.chatapp.authservice.dto.BlockDto;
-
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface BlockService {
 
@@ -10,6 +10,6 @@ public interface BlockService {
 
     void unblockUser(Long userId, Long blockedUserId);
 
-    List<BlockDto> getBlockedUsers(Long userId);
+    Page<BlockDto> getBlockedUsers(Long userId, Pageable pageable);
 
 }

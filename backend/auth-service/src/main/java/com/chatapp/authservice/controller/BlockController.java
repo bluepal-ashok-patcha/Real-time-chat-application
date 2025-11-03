@@ -4,10 +4,10 @@ import com.chatapp.authservice.dto.BlockDto;
 import com.chatapp.authservice.service.BlockService;
 import com.chatapp.authservice.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/blocks")
@@ -41,9 +41,9 @@ public class BlockController {
     }
 
     @GetMapping
-    public ResponseEntity<List<BlockDto>> getBlockedUsers(HttpServletRequest request) {
+    public ResponseEntity<Page<BlockDto>> getBlockedUsers(HttpServletRequest request, Pageable pageable) {
         Long userId = getUserIdFromRequest(request);
-        return ResponseEntity.ok(blockService.getBlockedUsers(userId));
+        return ResponseEntity.ok(blockService.getBlockedUsers(userId, pageable));
     }
 
 }

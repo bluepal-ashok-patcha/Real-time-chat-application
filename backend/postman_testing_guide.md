@@ -75,6 +75,12 @@ All endpoints are prefixed with `http://localhost:8080`.
 -   **Method:** `GET`
 -   **Endpoint:** `/api/contacts`
 
+#### Remove a contact
+
+-   **Method:** `DELETE`
+-   **Endpoint:** `/api/contacts/{contactId}`
+-   **Note:** Replace `{contactId}` with the ID of the user you want to remove from your contacts.
+
 ### Block Service (`/api/blocks`)
 
 -   **Header:** `Authorization: Bearer <your_jwt_token>`
@@ -90,11 +96,17 @@ All endpoints are prefixed with `http://localhost:8080`.
 -   **Method:** `GET`
 -   **Endpoint:** `/api/blocks`
 
+#### Unblock a user
+
+-   **Method:** `DELETE`
+-   **Endpoint:** `/api/blocks/{blockedUserId}`
+-   **Note:** Replace `{blockedUserId}` with the ID of the user you want to unblock.
+
 ### Chat Service (`/api/chat`)
 
 -   **Header:** `Authorization: Bearer <your_jwt_token>`
 
-#### Send a message
+#### Send a private message
 
 -   **Method:** `POST`
 -   **Endpoint:** `/api/chat/messages`
@@ -110,6 +122,21 @@ All endpoints are prefixed with `http://localhost:8080`.
 ```
 
 -   **Note:** Replace `2` with the ID of the user you want to send a message to.
+
+#### Send a group message
+
+-   **Method:** `POST`
+-   **Endpoint:** `/api/chat/messages`
+-   **Body (raw, JSON):**
+
+```json
+{
+  "groupId": 1,
+  "content": "Hello, group!"
+}
+```
+
+-   **Note:** Replace `1` with the ID of the group you want to send a message to.
 
 ### Group Service (`/api/groups`)
 
@@ -130,5 +157,11 @@ All endpoints are prefixed with `http://localhost:8080`.
 #### Add a user to a group
 
 -   **Method:** `POST`
+-   **Endpoint:** `/api/groups/{groupId}/users/{userId}`
+-   **Note:** Replace `{groupId}` and `{userId}` with the appropriate IDs.
+
+#### Remove a user from a group
+
+-   **Method:** `DELETE`
 -   **Endpoint:** `/api/groups/{groupId}/users/{userId}`
 -   **Note:** Replace `{groupId}` and `{userId}` with the appropriate IDs.

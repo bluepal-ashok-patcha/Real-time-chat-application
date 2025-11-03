@@ -6,10 +6,9 @@ import com.chatapp.authservice.model.Contact;
 import com.chatapp.authservice.model.User;
 import com.chatapp.authservice.repository.ContactRepository;
 import com.chatapp.authservice.repository.UserRepository;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class ContactServiceImpl implements ContactService {
@@ -42,10 +41,8 @@ public class ContactServiceImpl implements ContactService {
     }
 
     @Override
-    public List<ContactDto> getContacts(Long userId) {
-        return contactRepository.findByUserId(userId).stream()
-                .map(this::convertToDto)
-                .collect(Collectors.toList());
+    public Page<ContactDto> getContacts(Long userId, Pageable pageable) {
+        return contactRepository.findByUserId(userId, pageable).map(this::convertToDto);
     }
 
     private ContactDto convertToDto(Contact contact) {
