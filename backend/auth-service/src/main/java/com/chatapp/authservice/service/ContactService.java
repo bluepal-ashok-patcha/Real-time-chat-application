@@ -1,8 +1,8 @@
 package com.chatapp.authservice.service;
 
 import com.chatapp.authservice.dto.ContactDto;
-
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 public interface ContactService {
 
@@ -10,6 +10,6 @@ public interface ContactService {
 
     void removeContact(Long userId, Long contactId);
 
-    List<ContactDto> getContacts(Long userId);
+    Page<ContactDto> getContacts(Long userId, Pageable pageable);
 
 }

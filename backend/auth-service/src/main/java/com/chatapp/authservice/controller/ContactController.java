@@ -4,10 +4,10 @@ import com.chatapp.authservice.dto.ContactDto;
 import com.chatapp.authservice.service.ContactService;
 import com.chatapp.authservice.util.JwtUtil;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/api/contacts")
@@ -41,9 +41,9 @@ public class ContactController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ContactDto>> getContacts(HttpServletRequest request) {
+    public ResponseEntity<Page<ContactDto>> getContacts(HttpServletRequest request, Pageable pageable) {
         Long userId = getUserIdFromRequest(request);
-        return ResponseEntity.ok(contactService.getContacts(userId));
+        return ResponseEntity.ok(contactService.getContacts(userId, pageable));
     }
 
 }
