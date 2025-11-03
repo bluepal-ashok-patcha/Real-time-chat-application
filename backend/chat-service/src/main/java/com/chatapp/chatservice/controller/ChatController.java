@@ -3,6 +3,7 @@ package com.chatapp.chatservice.controller;
 import com.chatapp.chatservice.config.WebSocketEventListener;
 import com.chatapp.chatservice.dto.ChatMessage;
 import com.chatapp.chatservice.dto.MessageDto;
+import com.chatapp.chatservice.dto.MessageInfoDto;
 import com.chatapp.chatservice.dto.TypingNotification;
 import com.chatapp.chatservice.service.MessageService;
 import com.chatapp.chatservice.util.JwtUtil;
@@ -86,6 +87,11 @@ public class ChatController {
         Long userId = getUserIdFromRequest(request);
         messageService.markMessageAsRead(userId, messageId);
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping("/messages/{messageId}/info")
+    public ResponseEntity<MessageInfoDto> getMessageInfo(@PathVariable Long messageId) {
+        return ResponseEntity.ok(messageService.getMessageInfo(messageId));
     }
 
 }

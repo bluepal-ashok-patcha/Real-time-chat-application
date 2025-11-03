@@ -138,6 +138,12 @@ All endpoints are prefixed with `http://localhost:8080`.
 
 -   **Note:** Replace `1` with the ID of the group you want to send a message to.
 
+#### Get message info
+
+-   **Method:** `GET`
+-   **Endpoint:** `/api/chat/messages/{messageId}/info`
+-   **Note:** Replace `{messageId}` with the ID of the message you want to get information about.
+
 ### Group Service (`/api/groups`)
 
 -   **Header:** `Authorization: Bearer <your_jwt_token>`
