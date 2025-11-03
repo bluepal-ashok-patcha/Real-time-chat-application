@@ -31,6 +31,15 @@ public class GroupUser {
         private Long groupId;
         private Long userId;
 
+        // No-arg constructor required by JPA
+        public GroupUserId() {
+        }
+
+        public GroupUserId(Long groupId, Long userId) {
+            this.groupId = groupId;
+            this.userId = userId;
+        }
+
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
