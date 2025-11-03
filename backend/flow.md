@@ -8,7 +8,7 @@ The application is built using a microservices architecture, with the following 
 
 -   **Eureka Server:** A service discovery server that allows the other services to find and communicate with each other.
 -   **API Gateway:** The single entry point for all client requests. It handles routing, authentication, and some security checks.
--   **Auth Service:** Manages user registration, login, and JWT generation. It also manages user contacts and blocked users.
+-   **Auth Service:** Manages user registration, login, JWT generation, user contacts, blocked users, and user status.
 -   **Chat Service:** Manages chat messages, groups, and real-time communication using WebSockets and Kafka.
 
 ## Data Flow
@@ -32,11 +32,14 @@ The application is built using a microservices architecture, with the following 
 5.  A Kafka consumer in the Chat Service listens to the topic and receives the message.
 6.  The consumer sends the message to the recipient over a WebSocket connection.
 
-### Online Status
+### Online / Last Seen Status
 
 1.  When a user connects to the WebSocket, a `SessionConnectedEvent` is triggered.
-2.  The `WebSocketEventListener` adds the user to a set of online users stored in Redis.
+2.  The `WebSocketEventListener` in the Chat Service adds the user to a set of online users stored in Redis and removes their "last seen" timestamp.
 3.  The listener broadcasts the updated list of online users to all clients over a WebSocket connection.
 4.  When a user disconnects, a `SessionDisconnectEvent` is triggered.
-5.  The `WebSocketEventListener` removes the user from the set of online users in Redis.
+5.  The `WebSocketEventListener` removes the user from the set of online users in Redis and stores their "last seen" timestamp.
 6.  The listener broadcasts the updated list of online users to all clients over a WebSocket connection.
+7.  A client can get the status of a list of users by sending a `POST` request to `/api/users/status`.
+8.  The API Gateway forwards the request to the Auth Service.
+9.  The Auth Service checks the online users set and the "last seen" timestamps in Redis and returns the status of each user.

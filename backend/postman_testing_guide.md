@@ -42,6 +42,24 @@ All endpoints are prefixed with `http://localhost:8080`.
 
 -   **Note:** Copy the `token` from the response body and use it in the `Authorization` header for all subsequent requests.
 
+### User Service (`/api/users`)
+
+-   **Header:** `Authorization: Bearer <your_jwt_token>`
+
+#### Get user status
+
+-   **Method:** `POST`
+-   **Endpoint:** `/api/users/status`
+-   **Body (raw, JSON):**
+
+```json
+{
+  "userIds": [1, 2]
+}
+```
+
+-   **Note:** Replace `1` and `2` with the IDs of the users you want to get the status of.
+
 ### Contact Service (`/api/contacts`)
 
 -   **Header:** `Authorization: Bearer <your_jwt_token>`
