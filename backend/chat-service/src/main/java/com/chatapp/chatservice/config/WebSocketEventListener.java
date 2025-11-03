@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
 
+import java.time.Instant;
 import java.util.Set;
 
 @Component
@@ -19,6 +20,7 @@ public class WebSocketEventListener {
 
     private static final Logger logger = LoggerFactory.getLogger(WebSocketEventListener.class);
     private static final String ONLINE_USERS_KEY = "online-users";
+    private static final String LAST_SEEN_KEY_PREFIX = "last-seen:";
 
     private final SimpMessageSendingOperations messagingTemplate;
     private final RedisTemplate<String, String> redisTemplate;
@@ -34,6 +36,7 @@ public class WebSocketEventListener {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
         String username = headerAccessor.getUser().getName();
         redisTemplate.opsForSet().add(ONLINE_USERS_KEY, username);
+        redisTemplate.delete(LAST_SEEN_KEY_PREFIX + username);
         headerAccessor.getSessionAttributes().put("username", username);
 
         ChatMessage chatMessage = new ChatMessage();
@@ -52,6 +55,7 @@ public class WebSocketEventListener {
         if (username != null) {
             logger.info("User Disconnected : " + username);
             redisTemplate.opsForSet().remove(ONLINE_USERS_KEY, username);
+            redisTemplate.opsForValue().set(LAST_SEEN_KEY_PREFIX + username, String.valueOf(Instant.now().toEpochMilli()));
 
             ChatMessage chatMessage = new ChatMessage();
             chatMessage.setType(MessageType.LEAVE);

@@ -1,19 +1,19 @@
 server:
-  port: 8082
+  port: 8084
 
 spring:
   application:
     name: chat-service
   datasource:
     url: jdbc:mysql://localhost:3306/chatapp
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    username: root
+    password: ashok
   jpa:
     hibernate:
       ddl-auto: update
     show-sql: true
   kafka:
-    bootstrap-servers: ${KAFKA_BROKER}
+    bootstrap-servers: localhost:9092
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -35,4 +35,4 @@ eureka:
       defaultZone: http://localhost:8761/eureka/
 
 jwt:
-  secret: ${JWT_SECRET}
+  secret: YWHx2ms0eGJhYlN6TkJqbENBblUyTktWbEZka3NaNElvNkliZlJ3czZ1skhqbdjqw
