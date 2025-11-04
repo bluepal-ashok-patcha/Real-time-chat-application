@@ -13,7 +13,6 @@ public class GroupRowMapper implements RowMapper<Group> {
         group.setId(rs.getLong("id"));
         group.setName(rs.getString("name"));
         group.setCreatedBy(rs.getLong("created_by"));
-        group.setTimestamp(rs.getTimestamp("timestamp").toLocalDateTime());
         return group;
     }
 }
