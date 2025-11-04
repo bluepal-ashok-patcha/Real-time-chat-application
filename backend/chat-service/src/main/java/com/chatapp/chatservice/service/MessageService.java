@@ -17,4 +17,6 @@ public interface MessageService {
 
     MessageInfoDto getMessageInfo(Long messageId);
 
+    java.util.List<com.chatapp.chatservice.dto.ConversationDto> getConversations(Long userId);
+
 }
