@@ -94,4 +94,10 @@ public class ChatController {
         return ResponseEntity.ok(messageService.getMessageInfo(messageId));
     }
 
+    @GetMapping("/conversations")
+    public ResponseEntity<java.util.List<com.chatapp.chatservice.dto.ConversationDto>> getConversations(HttpServletRequest request) {
+        Long userId = getUserIdFromRequest(request);
+        return ResponseEntity.ok(messageService.getConversations(userId));
+    }
+
 }

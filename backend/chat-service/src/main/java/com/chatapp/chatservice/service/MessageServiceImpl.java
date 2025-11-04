@@ -27,16 +27,21 @@ public class MessageServiceImpl implements MessageService {
     private final KafkaProducer kafkaProducer;
     private final UserDao userDao;
     private final BlockDao blockDao;
+    private final com.chatapp.chatservice.dao.ContactDao contactDao;
+    private final com.chatapp.chatservice.dao.GroupDao groupDao;
     private final GroupUserRepository groupUserRepository;
     private final MessageStatusRepository messageStatusRepository;
 
     public MessageServiceImpl(MessageRepository messageRepository, KafkaProducer kafkaProducer, UserDao userDao,
-                              BlockDao blockDao, GroupUserRepository groupUserRepository,
+                              BlockDao blockDao, com.chatapp.chatservice.dao.ContactDao contactDao,
+                              com.chatapp.chatservice.dao.GroupDao groupDao, GroupUserRepository groupUserRepository,
                               MessageStatusRepository messageStatusRepository) {
         this.messageRepository = messageRepository;
         this.kafkaProducer = kafkaProducer;
         this.userDao = userDao;
         this.blockDao = blockDao;
+        this.contactDao = contactDao;
+        this.groupDao = groupDao;
         this.groupUserRepository = groupUserRepository;
         this.messageStatusRepository = messageStatusRepository;
     }
@@ -162,6 +167,48 @@ public class MessageServiceImpl implements MessageService {
                 .timestamp(message.getTimestamp())
                 .status(message.getStatus())
                 .build();
+    }
+
+    @Override
+    public java.util.List<com.chatapp.chatservice.dto.ConversationDto> getConversations(Long userId) {
+        java.util.List<com.chatapp.chatservice.dto.ConversationDto> conversations = new java.util.ArrayList<>();
+
+        // Get private conversations
+        contactDao.findByUserId(userId).forEach(contact -> {
+            messageRepository.findLastPrivateMessage(userId, contact.getContact().getId(), org.springframework.data.domain.PageRequest.of(0, 1))
+                    .ifPresent(lastMessage -> {
+                        long unreadCount = messageRepository.countUnreadPrivateMessages(contact.getContact().getId(), userId, MessageStatus.Status.DELIVERED);
+                        conversations.add(com.chatapp.chatservice.dto.ConversationDto.builder()
+                                .id(contact.getContact().getId())
+                                .name(contact.getContact().getUsername())
+                                .type("PRIVATE")
+                                .lastMessage(lastMessage.getContent())
+                                .lastMessageTimestamp(lastMessage.getTimestamp())
+                                .unreadCount(unreadCount)
+                                .profilePictureUrl(contact.getContact().getProfilePictureUrl())
+                                .build());
+                    });
+        });
+
+        // Get group conversations
+        groupDao.findByUserId(userId).forEach(group -> {
+            messageRepository.findLastGroupMessage(group.getId(), org.springframework.data.domain.PageRequest.of(0, 1))
+                    .ifPresent(lastMessage -> {
+                        long unreadCount = messageStatusRepository.countByGroupIdAndUserIdAndStatus(group.getId(), userId, MessageStatus.Status.DELIVERED);
+                        conversations.add(com.chatapp.chatservice.dto.ConversationDto.builder()
+                                .id(group.getId())
+                                .name(group.getName())
+                                .type("GROUP")
+                                .lastMessage(lastMessage.getContent())
+                                .lastMessageTimestamp(lastMessage.getTimestamp())
+                                .unreadCount(unreadCount)
+                                .build());
+                    });
+        });
+
+        conversations.sort((c1, c2) -> c2.getLastMessageTimestamp().compareTo(c1.getLastMessageTimestamp()));
+
+        return conversations;
     }
 
 }
