@@ -6,7 +6,7 @@ import MessagingApp from './pages/MessagingApp';
 import './index.css';
 
 function App() {
-  const isAuthenticated = useSelector((state) => state.auth.isAuthenticated);
+  const { user } = useSelector((state) => state.auth);
 
   return (
     <Router>
@@ -15,11 +15,11 @@ function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route
           path="/chat"
-          element={isAuthenticated ? <MessagingApp /> : <Navigate to="/login" />}
+          element={user && user.id ? <MessagingApp /> : <Navigate to="/login" />}
         />
         <Route
           path="/"
-          element={isAuthenticated ? <Navigate to="/chat" /> : <Navigate to="/login" />}
+          element={user && user.id ? <Navigate to="/chat" /> : <Navigate to="/login" />}
         />
       </Routes>
     </Router>
