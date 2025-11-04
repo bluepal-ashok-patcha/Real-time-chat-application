@@ -11,4 +11,6 @@ public interface AuthService {
 
     AuthResponse login(AuthRequest authRequest);
 
+    User getUserById(Long id);
+
 }
