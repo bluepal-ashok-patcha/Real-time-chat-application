@@ -160,6 +160,7 @@ public class MessageServiceImpl implements MessageService {
                 .groupId(message.getGroupId())
                 .content(message.getContent())
                 .timestamp(message.getTimestamp())
+                .status(message.getStatus())
                 .build();
     }
 

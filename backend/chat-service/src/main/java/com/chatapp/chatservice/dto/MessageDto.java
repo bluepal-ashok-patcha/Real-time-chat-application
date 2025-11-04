@@ -28,4 +28,6 @@ public class MessageDto {
 
     private MessageType type;
 
+    private com.chatapp.chatservice.model.MessageStatus.Status status;
+
 }
