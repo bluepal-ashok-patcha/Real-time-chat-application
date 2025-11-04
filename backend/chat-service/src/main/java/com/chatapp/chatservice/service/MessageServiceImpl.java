@@ -176,36 +176,38 @@ public class MessageServiceImpl implements MessageService {
         // Get private conversations
         contactDao.findByUserId(userId).forEach(contact -> {
             userDao.findById(contact.getContactId()).ifPresent(contactUser -> {
-                messageRepository.findLastPrivateMessage(userId, contactUser.getId(), org.springframework.data.domain.PageRequest.of(0, 1))
-                        .ifPresent(lastMessage -> {
-                            long unreadCount = messageRepository.countUnreadPrivateMessages(contactUser.getId(), userId, MessageStatus.Status.DELIVERED);
-                            conversations.add(com.chatapp.chatservice.dto.ConversationDto.builder()
-                                    .id(contactUser.getId())
-                                    .name(contactUser.getUsername())
-                                    .type("PRIVATE")
-                                    .lastMessage(lastMessage.getContent())
-                                    .lastMessageTimestamp(lastMessage.getTimestamp())
-                                    .unreadCount(unreadCount)
-                                    .profilePictureUrl(contactUser.getProfilePictureUrl())
-                                    .build());
-                        });
+                List<Message> lastPrivateMessageList = messageRepository.findLastPrivateMessage(userId, contactUser.getId(), org.springframework.data.domain.PageRequest.of(0, 1));
+                if (!lastPrivateMessageList.isEmpty()) {
+                    Message lastMessage = lastPrivateMessageList.get(0);
+                    long unreadCount = messageRepository.countUnreadPrivateMessages(contactUser.getId(), userId, MessageStatus.Status.DELIVERED);
+                    conversations.add(com.chatapp.chatservice.dto.ConversationDto.builder()
+                            .id(contactUser.getId())
+                            .name(contactUser.getUsername())
+                            .type("PRIVATE")
+                            .lastMessage(lastMessage.getContent())
+                            .lastMessageTimestamp(lastMessage.getTimestamp())
+                            .unreadCount(unreadCount)
+                            .profilePictureUrl(contactUser.getProfilePictureUrl())
+                            .build());
+                }
             });
         });
 
         // Get group conversations
         groupDao.findByUserId(userId).forEach(group -> {
-            messageRepository.findLastGroupMessage(group.getId(), org.springframework.data.domain.PageRequest.of(0, 1))
-                    .ifPresent(lastMessage -> {
-                        long unreadCount = messageStatusRepository.countByGroupIdAndUserIdAndStatus(group.getId(), userId, MessageStatus.Status.DELIVERED);
-                        conversations.add(com.chatapp.chatservice.dto.ConversationDto.builder()
-                                .id(group.getId())
-                                .name(group.getName())
-                                .type("GROUP")
-                                .lastMessage(lastMessage.getContent())
-                                .lastMessageTimestamp(lastMessage.getTimestamp())
-                                .unreadCount(unreadCount)
-                                .build());
-                    });
+            List<Message> lastGroupMessageList = messageRepository.findLastGroupMessage(group.getId(), org.springframework.data.domain.PageRequest.of(0, 1));
+            if (!lastGroupMessageList.isEmpty()) {
+                Message lastMessage = lastGroupMessageList.get(0);
+                long unreadCount = messageStatusRepository.countByGroupIdAndUserIdAndStatus(group.getId(), userId, MessageStatus.Status.DELIVERED);
+                conversations.add(com.chatapp.chatservice.dto.ConversationDto.builder()
+                        .id(group.getId())
+                        .name(group.getName())
+                        .type("GROUP")
+                        .lastMessage(lastMessage.getContent())
+                        .lastMessageTimestamp(lastMessage.getTimestamp())
+                        .unreadCount(unreadCount)
+                        .build());
+            }
         });
 
         conversations.sort((c1, c2) -> c2.getLastMessageTimestamp().compareTo(c1.getLastMessageTimestamp()));
