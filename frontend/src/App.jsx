@@ -12,11 +12,10 @@ function App() {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    const storedToken = localStorage.getItem('token');
-    if (storedToken && !user) {
+    if (token && !user) {
       dispatch(fetchUserProfile());
     }
-  }, [dispatch, user]);
+  }, [dispatch, token, user]);
 
   return (
     <Router>

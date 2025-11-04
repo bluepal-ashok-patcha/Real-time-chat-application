@@ -14,8 +14,8 @@ export const fetchUserProfile = createAsyncThunk('auth/fetchUserProfile', async 
 
 const initialState = {
   user: null,
-  token: null,
-  isAuthenticated: false,
+  token: localStorage.getItem('token'),
+  isAuthenticated: !!localStorage.getItem('token'),
   status: 'idle',
   error: null,
 };
@@ -47,6 +47,15 @@ export const authSlice = createSlice({
       })
       .addCase(fetchUserProfile.fulfilled, (state, action) => {
         state.user = action.payload;
+        state.isAuthenticated = true;
+        state.status = 'succeeded';
+      })
+      .addCase(fetchUserProfile.rejected, (state) => {
+        state.user = null;
+        state.token = null;
+        state.isAuthenticated = false;
+        state.status = 'failed';
+        localStorage.removeItem('token');
       });
   },
 });
