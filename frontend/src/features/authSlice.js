@@ -4,6 +4,11 @@ import api from '../services/api';
 export const login = createAsyncThunk('auth/login', async ({ username, password }) => {
   const response = await api.post('/auth/login', { username, password });
   localStorage.setItem('token', response.data.token);
+  return response.data.token;
+});
+
+export const fetchUserProfile = createAsyncThunk('auth/fetchUserProfile', async () => {
+  const response = await api.get('/auth/profile');
   return response.data;
 });
 
@@ -33,13 +38,15 @@ export const authSlice = createSlice({
       })
       .addCase(login.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.user = action.payload.user;
-        state.token = action.payload.token;
+        state.token = action.payload;
         state.isAuthenticated = true;
       })
       .addCase(login.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.error.message;
+      })
+      .addCase(fetchUserProfile.fulfilled, (state, action) => {
+        state.user = action.payload;
       });
   },
 });
