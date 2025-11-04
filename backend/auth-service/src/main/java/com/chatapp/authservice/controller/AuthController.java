@@ -41,6 +41,21 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(authRequest));
     }
 
+    @GetMapping("/profile")
+    public ResponseEntity<UserDto> getProfile(HttpServletRequest request) {
+        String header = request.getHeader("Authorization");
+        String token = header.substring(7);
+        Long userId = jwtUtil.getUserIdFromToken(token);
+        User user = authService.getUserById(userId);
+        UserDto userDto = UserDto.builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .build();
+        return ResponseEntity.ok(userDto);
+    }
+
     @GetMapping("/hello")
     public ResponseEntity<String> hello(HttpServletRequest request) {
         String header = request.getHeader("Authorization");

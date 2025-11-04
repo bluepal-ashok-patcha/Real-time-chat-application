@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { login } from '../features/authSlice';
+import { login, fetchUserProfile } from '../features/authSlice';
 import { Box, TextField, Button, Typography, Paper, CircularProgress, Grid } from '@mui/material';
 
 const LoginForm = () => {
@@ -16,6 +16,7 @@ const LoginForm = () => {
     dispatch(login({ username, password }))
       .unwrap()
       .then(() => {
+        dispatch(fetchUserProfile());
         navigate('/chat');
       })
       .catch((error) => {
