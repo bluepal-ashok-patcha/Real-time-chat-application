@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Box } from '@mui/material';
+import { Box, CircularProgress } from '@mui/material';
 import Sidebar from '../components/Sidebar';
 import ChatWindow from '../components/ChatWindow';
 import MessageInput from '../components/MessageInput';
@@ -57,6 +57,14 @@ const MessagingApp = () => {
   const handleSendMessage = (content) => {
     dispatch(sendMessage({ receiverId: selectedContact.id, content }));
   };
+
+  if (!user) {
+    return (
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
 
   return (
     <Box sx={{ display: 'flex', height: '100vh' }}>
