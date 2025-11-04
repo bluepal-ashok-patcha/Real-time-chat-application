@@ -22,33 +22,33 @@ const MessagingApp = () => {
   }, [dispatch, token]);
 
   useEffect(() => {
-    if (selectedContact) {
+    if (selectedContact && user && user.id) {
       dispatch(fetchMessages({ userId: user.id, contactId: selectedContact.id }));
     }
-  }, [dispatch, selectedContact, user.id]);
+  }, [dispatch, selectedContact, user]);
 
   useEffect(() => {
-    const client = new StompJs.Client({
-      webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
-      connectHeaders: { Authorization: `Bearer ${token}` },
-      onConnect: () => {
-        client.subscribe(`/user/${user.id}/queue/reply`, (message) => {
-          const receivedMessage = JSON.parse(message.body);
-          dispatch(addMessage(receivedMessage));
-        });
-      },
-    });
+    if (token && user && user.id) {
+      const client = new StompJs.Client({
+        webSocketFactory: () => new SockJS('http://localhost:8080/ws'),
+        connectHeaders: { Authorization: `Bearer ${token}` },
+        onConnect: () => {
+          client.subscribe(`/user/${user.id}/queue/reply`, (message) => {
+            const receivedMessage = JSON.parse(message.body);
+            dispatch(addMessage(receivedMessage));
+          });
+        },
+      });
 
-    if (token) {
       client.activate();
-    }
 
-    return () => {
-      if (client) {
-        client.deactivate();
-      }
-    };
-  }, [dispatch, token, user.id]);
+      return () => {
+        if (client) {
+          client.deactivate();
+        }
+      };
+    }
+  }, [dispatch, token, user]);
 
   const handleSelectContact = (contact) => {
     dispatch(selectContact(contact));
