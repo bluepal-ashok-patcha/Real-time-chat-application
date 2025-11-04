@@ -63,6 +63,7 @@ public class MessageServiceImpl implements MessageService {
                 .groupId(messageDto.getGroupId())
                 .content(messageDto.getContent())
                 .timestamp(LocalDateTime.now())
+                .status(MessageStatus.Status.DELIVERED)
                 .build();
         Message savedMessage = messageRepository.save(message);
 
@@ -98,11 +99,22 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public void markMessageAsRead(Long userId, Long messageId) {
-        Message message = messageRepository.findById(messageId).orElseThrow(() -> new RuntimeException("Message not found"));
-        MessageStatus messageStatus = messageStatusRepository.findById(new MessageStatus.MessageStatusId(messageId, userId))
-                .orElseThrow(() -> new RuntimeException("Message status not found for user " + userId));
-        messageStatus.setStatus(MessageStatus.Status.READ);
-        messageStatusRepository.save(messageStatus);
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new RuntimeException("Message not found"));
+
+        if (message.getGroupId() != null) {
+            // Group message: update MessageStatus
+            MessageStatus messageStatus = messageStatusRepository.findById(new MessageStatus.MessageStatusId(messageId, userId))
+                    .orElseThrow(() -> new RuntimeException("Message status not found for user " + userId));
+            messageStatus.setStatus(MessageStatus.Status.READ);
+            messageStatusRepository.save(messageStatus);
+        } else {
+            // One-on-one message: update Message status
+            if (message.getReceiverId().equals(userId)) {
+                message.setStatus(MessageStatus.Status.READ);
+                messageRepository.save(message);
+            }
+        }
 
         if (message.getGroupId() == null) {
             kafkaProducer.sendReadReceipt(ReadReceipt.builder()
