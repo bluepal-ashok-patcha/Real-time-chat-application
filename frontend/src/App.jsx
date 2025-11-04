@@ -1,12 +1,22 @@
+import { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchUserProfile } from './features/authSlice';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import MessagingApp from './pages/MessagingApp';
 import './index.css';
 
 function App() {
-  const { user } = useSelector((state) => state.auth);
+  const { user, token } = useSelector((state) => state.auth);
+  const dispatch = useDispatch();
+
+  useEffect(() => {
+    const storedToken = localStorage.getItem('token');
+    if (storedToken && !user) {
+      dispatch(fetchUserProfile());
+    }
+  }, [dispatch, user]);
 
   return (
     <Router>
