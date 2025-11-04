@@ -51,10 +51,14 @@ public class ContactServiceImpl implements ContactService {
                 .user(UserDto.builder()
                         .id(contact.getUser().getId())
                         .username(contact.getUser().getUsername())
+                        .profilePictureUrl(contact.getUser().getProfilePictureUrl())
+                        .about(contact.getUser().getAbout())
                         .build())
                 .contact(UserDto.builder()
                         .id(contact.getContact().getId())
                         .username(contact.getContact().getUsername())
+                        .profilePictureUrl(contact.getContact().getProfilePictureUrl())
+                        .about(contact.getContact().getAbout())
                         .build())
                 .build();
     }

@@ -2,6 +2,7 @@ package com.chatapp.authservice.service;
 
 import com.chatapp.authservice.dto.AuthRequest;
 import com.chatapp.authservice.dto.AuthResponse;
+import com.chatapp.authservice.dto.ProfileUpdateRequest;
 import com.chatapp.authservice.dto.RegisterRequest;
 import com.chatapp.authservice.exception.UsernameAlreadyExistsException;
 import com.chatapp.authservice.model.Role;
@@ -67,5 +68,14 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public User getUserById(Long id) {
         return userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    @Override
+    public User updateProfile(Long userId, ProfileUpdateRequest profileUpdateRequest) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setProfilePictureUrl(profileUpdateRequest.getProfilePictureUrl());
+        user.setAbout(profileUpdateRequest.getAbout());
+        return userRepository.save(user);
     }
 }
