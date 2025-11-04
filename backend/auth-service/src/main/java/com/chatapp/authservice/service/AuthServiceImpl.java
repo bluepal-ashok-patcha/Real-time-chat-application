@@ -64,4 +64,8 @@ public class AuthServiceImpl implements AuthService {
         return AuthResponse.builder().token(jwt).build();
     }
 
+    @Override
+    public User getUserById(Long id) {
+        return userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
+    }
 }
