@@ -20,4 +20,8 @@ public class UserDto {
 
     private Role role;
 
+    private String profilePictureUrl;
+
+    private String about;
+
 }

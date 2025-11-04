@@ -2,6 +2,7 @@ package com.chatapp.authservice.service;
 
 import com.chatapp.authservice.dto.AuthRequest;
 import com.chatapp.authservice.dto.AuthResponse;
+import com.chatapp.authservice.dto.ProfileUpdateRequest;
 import com.chatapp.authservice.dto.RegisterRequest;
 import com.chatapp.authservice.model.User;
 
@@ -12,5 +13,7 @@ public interface AuthService {
     AuthResponse login(AuthRequest authRequest);
 
     User getUserById(Long id);
+
+    User updateProfile(Long userId, ProfileUpdateRequest profileUpdateRequest);
 
 }
