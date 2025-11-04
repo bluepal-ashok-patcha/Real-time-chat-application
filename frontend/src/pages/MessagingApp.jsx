@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Box, CircularProgress } from '@mui/material';
 import Sidebar from '../components/Sidebar';
@@ -15,6 +15,12 @@ const MessagingApp = () => {
   const { contacts, selectedContact } = useSelector((state) => state.contacts);
   const { messages } = useSelector((state) => state.messages);
   const { user, token } = useSelector((state) => state.auth);
+
+  const selectedContactRef = useRef(selectedContact);
+
+  useEffect(() => {
+    selectedContactRef.current = selectedContact;
+  }, [selectedContact]);
 
   useEffect(() => {
     if (token) {
@@ -37,7 +43,7 @@ const MessagingApp = () => {
         onConnect: () => {
           client.subscribe(`/user/${user.id}/queue/reply`, (message) => {
             const receivedMessage = JSON.parse(message.body);
-            if (selectedContact && receivedMessage.sender.id === selectedContact.id) {
+            if (selectedContactRef.current && receivedMessage.sender.id === selectedContactRef.current.id) {
               dispatch(addMessage(receivedMessage));
             }
             dispatch(updateConversation(receivedMessage));
@@ -63,7 +69,7 @@ const MessagingApp = () => {
     dispatch(sendMessage({ receiverId: selectedContact.id, content }));
   };
 
-  if (!user) {
+  if (!user || !user.id) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
         <CircularProgress />
