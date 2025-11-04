@@ -35,9 +35,13 @@ const Sidebar = ({ onSelectContact }) => {
     }
   };
 
-  const filteredConversations = conversations.filter((conversation) =>
-    conversation.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredConversations = Array.isArray(conversations)
+    ? conversations.filter(
+        (conversation) =>
+          conversation.name &&
+          conversation.name.toLowerCase().includes(searchQuery.toLowerCase())
+      )
+    : [];
 
   return (
     <Drawer
@@ -73,29 +77,34 @@ const Sidebar = ({ onSelectContact }) => {
         />
       </Box>
       <List>
-        {filteredConversations.map((conversation) => (
-          <ListItem button key={`${conversation.type}-${conversation.id}`} onClick={() => onSelectContact(conversation)}>
-            <ListItemAvatar>
-              <Avatar src={conversation.profilePictureUrl}>{conversation.name[0].toUpperCase()}</Avatar>
-            </ListItemAvatar>
-            <ListItemText
-              primary={conversation.name}
-              secondary={
-                <Typography variant="body2" color="text.secondary" noWrap>
-                  {conversation.lastMessage}
-                </Typography>
-              }
-            />
-            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
-              <Typography variant="caption" color="text.secondary">
-                {new Date(conversation.lastMessageTimestamp).toLocaleTimeString()}
-              </Typography>
-              {conversation.unreadCount > 0 && (
-                <Badge badgeContent={conversation.unreadCount} color="primary" />
-              )}
-            </Box>
-          </ListItem>
-        ))}
+        {filteredConversations &&
+          filteredConversations
+            .filter((conversation) => conversation && conversation.name) // Add this line to filter out invalid conversations
+            .map((conversation) => (
+              <ListItem button key={`${conversation.type}-${conversation.id}`} onClick={() => onSelectContact(conversation)}>
+                <ListItemAvatar>
+                  <Avatar src={conversation.profilePictureUrl}>
+                    {conversation.name[0]?.toUpperCase()}
+                  </Avatar>
+                </ListItemAvatar>
+                <ListItemText
+                  primary={conversation.name}
+                  secondary={
+                    <Typography variant="body2" color="text.secondary" noWrap>
+                      {conversation.lastMessage}
+                    </Typography>
+                  }
+                />
+                <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                  <Typography variant="caption" color="text.secondary">
+                    {new Date(conversation.lastMessageTimestamp).toLocaleTimeString()}
+                  </Typography>
+                  {conversation.unreadCount > 0 && (
+                    <Badge badgeContent={conversation.unreadCount} color="primary" />
+                  )}
+                </Box>
+              </ListItem>
+            ))}
       </List>
       <CreateGroupModal open={open} handleClose={handleClose} handleCreateGroup={handleCreateGroup} />
     </Drawer>
