@@ -8,12 +8,15 @@ import { logout } from '../features/authSlice';
 import { useNavigate } from 'react-router-dom';
 import CreateGroupModal from './CreateGroupModal';
 import api from '../services/api';
+import { useSelector } from 'react-redux';
+import { Badge } from '@mui/material';
 
-const Sidebar = ({ contacts, onSelectContact }) => {
+const Sidebar = ({ onSelectContact }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [open, setOpen] = useState(false);
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { conversations } = useSelector((state) => state.conversations);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -32,8 +35,8 @@ const Sidebar = ({ contacts, onSelectContact }) => {
     }
   };
 
-  const filteredContacts = contacts.filter((contact) =>
-    contact.username.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredConversations = conversations.filter((conversation) =>
+    conversation.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -59,7 +62,7 @@ const Sidebar = ({ contacts, onSelectContact }) => {
       <Box sx={{ p: 2 }}>
         <TextField
           fullWidth
-          placeholder="Search contacts..."
+          placeholder="Search chats..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           InputProps={{
@@ -70,12 +73,27 @@ const Sidebar = ({ contacts, onSelectContact }) => {
         />
       </Box>
       <List>
-        {filteredContacts.map((contact) => (
-          <ListItem button key={contact.id} onClick={() => onSelectContact(contact)}>
+        {filteredConversations.map((conversation) => (
+          <ListItem button key={`${conversation.type}-${conversation.id}`} onClick={() => onSelectContact(conversation)}>
             <ListItemAvatar>
-              <Avatar>{contact.username[0].toUpperCase()}</Avatar>
+              <Avatar src={conversation.profilePictureUrl}>{conversation.name[0].toUpperCase()}</Avatar>
             </ListItemAvatar>
-            <ListItemText primary={contact.username} />
+            <ListItemText
+              primary={conversation.name}
+              secondary={
+                <Typography variant="body2" color="text.secondary" noWrap>
+                  {conversation.lastMessage}
+                </Typography>
+              }
+            />
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+              <Typography variant="caption" color="text.secondary">
+                {new Date(conversation.lastMessageTimestamp).toLocaleTimeString()}
+              </Typography>
+              {conversation.unreadCount > 0 && (
+                <Badge badgeContent={conversation.unreadCount} color="primary" />
+              )}
+            </Box>
           </ListItem>
         ))}
       </List>

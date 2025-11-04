@@ -6,6 +6,7 @@ import ChatWindow from '../components/ChatWindow';
 import MessageInput from '../components/MessageInput';
 import { fetchContacts, selectContact } from '../features/contactsSlice';
 import { fetchMessages, sendMessage, addMessage } from '../features/messagesSlice';
+import { fetchConversations, updateConversation } from '../features/conversationsSlice';
 import * as StompJs from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 
@@ -18,6 +19,7 @@ const MessagingApp = () => {
   useEffect(() => {
     if (token) {
       dispatch(fetchContacts());
+      dispatch(fetchConversations());
     }
   }, [dispatch, token]);
 
@@ -35,7 +37,10 @@ const MessagingApp = () => {
         onConnect: () => {
           client.subscribe(`/user/${user.id}/queue/reply`, (message) => {
             const receivedMessage = JSON.parse(message.body);
-            dispatch(addMessage(receivedMessage));
+            if (selectedContact && receivedMessage.sender.id === selectedContact.id) {
+              dispatch(addMessage(receivedMessage));
+            }
+            dispatch(updateConversation(receivedMessage));
           });
         },
       });
@@ -68,7 +73,7 @@ const MessagingApp = () => {
 
   return (
     <Box sx={{ display: 'flex', height: '100vh' }}>
-      <Sidebar contacts={contacts} onSelectContact={handleSelectContact} />
+      <Sidebar onSelectContact={handleSelectContact} />
       <Box sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column' }}>
         <ChatWindow messages={messages} selectedContact={selectedContact} />
         {selectedContact && <MessageInput onSendMessage={handleSendMessage} />}
