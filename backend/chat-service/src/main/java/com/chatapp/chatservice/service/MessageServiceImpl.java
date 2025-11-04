@@ -175,19 +175,21 @@ public class MessageServiceImpl implements MessageService {
 
         // Get private conversations
         contactDao.findByUserId(userId).forEach(contact -> {
-            messageRepository.findLastPrivateMessage(userId, contact.getContact().getId(), org.springframework.data.domain.PageRequest.of(0, 1))
-                    .ifPresent(lastMessage -> {
-                        long unreadCount = messageRepository.countUnreadPrivateMessages(contact.getContact().getId(), userId, MessageStatus.Status.DELIVERED);
-                        conversations.add(com.chatapp.chatservice.dto.ConversationDto.builder()
-                                .id(contact.getContact().getId())
-                                .name(contact.getContact().getUsername())
-                                .type("PRIVATE")
-                                .lastMessage(lastMessage.getContent())
-                                .lastMessageTimestamp(lastMessage.getTimestamp())
-                                .unreadCount(unreadCount)
-                                .profilePictureUrl(contact.getContact().getProfilePictureUrl())
-                                .build());
-                    });
+            userDao.findById(contact.getContactId()).ifPresent(contactUser -> {
+                messageRepository.findLastPrivateMessage(userId, contactUser.getId(), org.springframework.data.domain.PageRequest.of(0, 1))
+                        .ifPresent(lastMessage -> {
+                            long unreadCount = messageRepository.countUnreadPrivateMessages(contactUser.getId(), userId, MessageStatus.Status.DELIVERED);
+                            conversations.add(com.chatapp.chatservice.dto.ConversationDto.builder()
+                                    .id(contactUser.getId())
+                                    .name(contactUser.getUsername())
+                                    .type("PRIVATE")
+                                    .lastMessage(lastMessage.getContent())
+                                    .lastMessageTimestamp(lastMessage.getTimestamp())
+                                    .unreadCount(unreadCount)
+                                    .profilePictureUrl(contactUser.getProfilePictureUrl())
+                                    .build());
+                        });
+            });
         });
 
         // Get group conversations
