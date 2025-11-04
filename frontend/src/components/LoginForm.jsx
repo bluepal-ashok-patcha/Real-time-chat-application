@@ -11,21 +11,18 @@ const LoginForm = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     setLoading(true);
-    dispatch(login({ username, password }))
-      .unwrap()
-      .then(() => {
-        dispatch(fetchUserProfile());
-        navigate('/chat');
-      })
-      .catch((error) => {
-        console.error('Login failed:', error);
-        alert('Login failed. Please check your credentials.');
-      })
-      .finally(() => {
-        setLoading(false);
-      });
+    try {
+      await dispatch(login({ username, password })).unwrap();
+      await dispatch(fetchUserProfile()).unwrap();
+      navigate('/chat');
+    } catch (error) {
+      console.error('Login failed:', error);
+      alert('Login failed. Please check your credentials.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleKeyPress = (e) => {
