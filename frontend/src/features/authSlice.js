@@ -1,6 +1,11 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../services/api';
 
+export const register = createAsyncThunk('auth/register', async ({ username, email, password }) => {
+  const response = await api.post('/auth/register', { username, email, password });
+  return response.data;
+});
+
 export const login = createAsyncThunk('auth/login', async ({ username, password }) => {
   const response = await api.post('/auth/login', { username, password });
   localStorage.setItem('token', response.data.token);
@@ -9,6 +14,11 @@ export const login = createAsyncThunk('auth/login', async ({ username, password 
 
 export const fetchUserProfile = createAsyncThunk('auth/fetchUserProfile', async () => {
   const response = await api.get('/auth/profile');
+  return response.data;
+});
+
+export const updateProfile = createAsyncThunk('auth/updateProfile', async ({ profilePictureUrl, about }) => {
+  const response = await api.put('/auth/profile', { profilePictureUrl, about });
   return response.data;
 });
 
@@ -30,9 +40,23 @@ export const authSlice = createSlice({
       state.isAuthenticated = false;
       localStorage.removeItem('token');
     },
+    setUser: (state, action) => {
+      state.user = action.payload;
+    },
   },
   extraReducers: (builder) => {
     builder
+      .addCase(register.pending, (state) => {
+        state.status = 'loading';
+      })
+      .addCase(register.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.user = action.payload;
+      })
+      .addCase(register.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.error.message;
+      })
       .addCase(login.pending, (state) => {
         state.status = 'loading';
       })
@@ -56,10 +80,13 @@ export const authSlice = createSlice({
         state.isAuthenticated = false;
         state.status = 'failed';
         localStorage.removeItem('token');
+      })
+      .addCase(updateProfile.fulfilled, (state, action) => {
+        state.user = action.payload;
       });
   },
 });
 
-export const { logout } = authSlice.actions;
+export const { logout, setUser } = authSlice.actions;
 
 export default authSlice.reducer;

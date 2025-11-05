@@ -34,10 +34,20 @@ public class WebSocketEventListener {
     public void handleWebSocketConnectListener(SessionConnectedEvent event) {
         logger.info("Received a new web socket connection");
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
+        
+        if (headerAccessor.getUser() == null) {
+            logger.warn("WebSocket connection without authenticated user");
+            return;
+        }
+        
         String username = headerAccessor.getUser().getName();
         redisTemplate.opsForSet().add(ONLINE_USERS_KEY, username);
         redisTemplate.delete(LAST_SEEN_KEY_PREFIX + username);
-        headerAccessor.getSessionAttributes().put("username", username);
+        
+        // Safely handle session attributes
+        if (headerAccessor.getSessionAttributes() != null) {
+            headerAccessor.getSessionAttributes().put("username", username);
+        }
 
         ChatMessage chatMessage = new ChatMessage();
         chatMessage.setType(MessageType.JOIN);
@@ -51,7 +61,16 @@ public class WebSocketEventListener {
     public void handleWebSocketDisconnectListener(SessionDisconnectEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
 
-        String username = (String) headerAccessor.getSessionAttributes().get("username");
+        String username = null;
+        if (headerAccessor.getSessionAttributes() != null) {
+            username = (String) headerAccessor.getSessionAttributes().get("username");
+        }
+        
+        // If username not in session attributes, try to get from user principal
+        if (username == null && headerAccessor.getUser() != null) {
+            username = headerAccessor.getUser().getName();
+        }
+        
         if (username != null) {
             logger.info("User Disconnected : " + username);
             redisTemplate.opsForSet().remove(ONLINE_USERS_KEY, username);

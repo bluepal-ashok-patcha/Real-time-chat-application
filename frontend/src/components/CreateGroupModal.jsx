@@ -1,48 +1,128 @@
-import React, { useState } from 'react';
-import { Modal, Box, Typography, TextField, Button } from '@mui/material';
+import React, { useState, useEffect } from 'react';
+import {
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Button,
+  Box,
+  Typography,
+  List,
+  ListItem,
+  ListItemAvatar,
+  Avatar,
+  ListItemButton,
+  Checkbox,
+  ListItemText,
+  CircularProgress,
+} from '@mui/material';
+import { useDispatch, useSelector } from 'react-redux';
+import { createGroup, addUserToGroup } from '../features/groupsSlice';
+import { fetchContacts } from '../features/contactsSlice';
 
-const style = {
-  position: 'absolute',
-  top: '50%',
-  left: '50%',
-  transform: 'translate(-50%, -50%)',
-  width: 400,
-  bgcolor: 'background.paper',
-  border: '2px solid #000',
-  boxShadow: 24,
-  p: 4,
-};
-
-const CreateGroupModal = ({ open, handleClose, handleCreateGroup }) => {
+const CreateGroupModal = ({ open, onClose }) => {
+  const dispatch = useDispatch();
+  const { contacts } = useSelector((state) => state.contacts);
   const [groupName, setGroupName] = useState('');
+  const [selectedContacts, setSelectedContacts] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  const onCreate = () => {
-    if (groupName.trim()) {
-      handleCreateGroup(groupName);
+  useEffect(() => {
+    if (open) {
+      dispatch(fetchContacts());
+    }
+  }, [open, dispatch]);
+
+  const handleToggleContact = (contactId) => {
+    setSelectedContacts((prev) =>
+      prev.includes(contactId)
+        ? prev.filter((id) => id !== contactId)
+        : [...prev, contactId]
+    );
+  };
+
+  const handleCreateGroup = async () => {
+    if (!groupName.trim() || selectedContacts.length === 0) {
+      alert('Please enter a group name and select at least one contact');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const group = await dispatch(createGroup(groupName.trim())).unwrap();
+      
+      // Add selected contacts to group
+      for (const contactId of selectedContacts) {
+        try {
+          await dispatch(addUserToGroup({ groupId: group.id, userId: contactId })).unwrap();
+        } catch (error) {
+          console.error(`Failed to add user ${contactId} to group:`, error);
+        }
+      }
+
       setGroupName('');
-      handleClose();
+      setSelectedContacts([]);
+      onClose();
+    } catch (error) {
+      console.error('Failed to create group:', error);
+      alert('Failed to create group');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <Modal open={open} onClose={handleClose}>
-      <Box sx={style}>
-        <Typography variant="h6" component="h2">
-          Create a new group
-        </Typography>
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
+      <DialogTitle>Create New Group</DialogTitle>
+      <DialogContent>
         <TextField
           fullWidth
           label="Group Name"
           value={groupName}
           onChange={(e) => setGroupName(e.target.value)}
-          variant="outlined"
-          sx={{ mt: 2, mb: 2 }}
+          className="mb-4"
+          margin="normal"
         />
-        <Button variant="contained" onClick={onCreate}>
-          Create
+
+        <Typography variant="subtitle2" className="mb-2">
+          Select Contacts ({selectedContacts.length} selected)
+        </Typography>
+
+        <Box className="max-h-64 overflow-y-auto border border-gray-200 rounded">
+          <List dense>
+            {contacts.map((contact) => (
+              <ListItem key={contact.contact.id} disablePadding>
+                <ListItemButton onClick={() => handleToggleContact(contact.contact.id)}>
+                  <Checkbox
+                    edge="start"
+                    checked={selectedContacts.includes(contact.contact.id)}
+                    tabIndex={-1}
+                    disableRipple
+                  />
+                  <ListItemAvatar>
+                    <Avatar src={contact.contact.profilePictureUrl}>
+                      {contact.contact.username[0]?.toUpperCase()}
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText primary={contact.contact.username} />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
+        </Box>
+      </DialogContent>
+      <DialogActions>
+        <Button onClick={onClose}>Cancel</Button>
+        <Button
+          onClick={handleCreateGroup}
+          variant="contained"
+          disabled={loading || !groupName.trim() || selectedContacts.length === 0}
+        >
+          {loading ? <CircularProgress size={24} /> : 'Create'}
         </Button>
-      </Box>
-    </Modal>
+      </DialogActions>
+    </Dialog>
   );
 };
 
