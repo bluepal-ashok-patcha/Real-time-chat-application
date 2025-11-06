@@ -9,6 +9,7 @@ import { fetchStatus } from '../features/statusSlice';
 const ChatHeader = ({ selectedContact }) => {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+  const { typing } = useSelector((state) => state.messages);
   const { userStatus } = useSelector((state) => state.status);
   const { blockedUsers = [] } = useSelector((state) => state.blocks);
   const [menuAnchor, setMenuAnchor] = useState(null);
@@ -49,6 +50,20 @@ const ChatHeader = ({ selectedContact }) => {
   };
 
   const getStatusText = () => {
+    // Show typing indicator with highest priority for current chat
+    if (selectedContact?.type === 'PRIVATE') {
+      const tKey = `user_${selectedContact.id}`;
+      if (typing[tKey]?.typing) {
+        return 'typing…';
+      }
+    } else if (selectedContact?.type === 'GROUP') {
+      const tKey = `group_${selectedContact.id}`;
+      if (typing[tKey]?.typing) {
+        const who = typing[tKey]?.username || 'Someone';
+        return `${who} is typing…`;
+      }
+    }
+
     if (selectedContact?.type === 'GROUP') {
       return 'Group chat';
     }

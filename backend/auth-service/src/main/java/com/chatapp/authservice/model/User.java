@@ -31,4 +31,8 @@ public class User {
 
     private String about;
 
+    // Optional, used for contact lookup by mobile number
+    @Column(unique = true)
+    private String phoneNumber;
+
 }

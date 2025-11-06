@@ -17,7 +17,7 @@ import {
 } from '@mui/material';
 import { Search as SearchIcon } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
-import { addContact, fetchContacts } from '../features/contactsSlice';
+import { addContactByIdentifier, fetchContacts, fetchInviteContacts } from '../features/contactsSlice';
 import api from '../services/api';
 
 const AddContactModal = ({ open, onClose }) => {
@@ -25,26 +25,33 @@ const AddContactModal = ({ open, onClose }) => {
   const { contacts } = useSelector((state) => state.contacts);
   const { user } = useSelector((state) => state.auth);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [resultMsg, setResultMsg] = useState('');
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
-      return;
-    }
-
+  const handleAdd = async () => {
+    if (!searchQuery.trim()) return;
     setLoading(true);
+    setResultMsg('');
     try {
-      // Note: You'll need to implement a search users API endpoint
-      // For now, we'll search through existing contacts
-      const response = await api.get(`/chat/users/search?q=${searchQuery}`);
-      const existingContactIds = contacts.map((c) => c.contact.id);
-      const filtered = response.data.filter((u) => u.id !== user.id && !existingContactIds.includes(u.id));
-      setSearchResults(filtered);
-    } catch (error) {
-      console.error('Search failed:', error);
-      setSearchResults([]);
+      const raw = searchQuery.trim();
+      let payload = { username: raw, email: null, mobile: null };
+      if (/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(raw)) {
+        payload = { username: null, email: raw, mobile: null };
+      } else if (/^\+?[0-9]{8,15}$/.test(raw)) {
+        payload = { username: null, email: null, mobile: raw };
+      }
+      const res = await dispatch(addContactByIdentifier(payload)).unwrap();
+      if (res.found) {
+        setResultMsg('Contact added.');
+      } else {
+        setResultMsg('No account found. Added to Invite list.');
+      }
+      await dispatch(fetchContacts({}));
+      await dispatch(fetchInviteContacts({}));
+      onClose();
+    } catch (e) {
+      console.error(e);
+      setResultMsg('Failed to add contact');
     } finally {
       setLoading(false);
     }
@@ -69,45 +76,26 @@ const AddContactModal = ({ open, onClose }) => {
         <Box className="mb-4">
           <TextField
             fullWidth
-            placeholder="Search by username or email"
+            placeholder="Enter username, email or phone"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
+            onKeyPress={(e) => e.key === 'Enter' && handleAdd()}
             InputProps={{
               startAdornment: <SearchIcon className="text-gray-400 mr-2" />,
             }}
           />
           <Button
             variant="contained"
-            onClick={handleSearch}
+            onClick={handleAdd}
             className="mt-2"
             disabled={loading}
             fullWidth
           >
-            {loading ? <CircularProgress size={24} /> : 'Search'}
+            {loading ? <CircularProgress size={24} /> : 'Add'}
           </Button>
         </Box>
-
-        {searchResults.length > 0 && (
-          <List>
-            {searchResults.map((user) => (
-              <ListItem key={user.id} button onClick={() => handleAddContact(user.id)}>
-                <ListItemAvatar>
-                  <Avatar src={user.profilePictureUrl}>{user.username[0]?.toUpperCase()}</Avatar>
-                </ListItemAvatar>
-                <ListItemText
-                  primary={user.username}
-                  secondary={user.email}
-                />
-              </ListItem>
-            ))}
-          </List>
-        )}
-
-        {searchQuery && searchResults.length === 0 && !loading && (
-          <Typography className="text-gray-500 text-center py-4">
-            No users found
-          </Typography>
+        {resultMsg && (
+          <Typography className="text-gray-500 text-center py-2">{resultMsg}</Typography>
         )}
       </DialogContent>
       <DialogActions>

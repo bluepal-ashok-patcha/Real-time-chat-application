@@ -19,7 +19,7 @@ import {
   updateMessageStatus,
   markMessageAsRead,
 } from '../features/messagesSlice';
-import { fetchOnlineUsers, updateOnlineUsers } from '../features/statusSlice';
+import { fetchOnlineUsers, updateOnlineUsers, setUserOnline, setUserOffline, fetchStatus } from '../features/statusSlice';
 import { connectWebSocket, disconnectWebSocket, subscribeToGroup, subscribeToGroupTyping } from '../services/websocket';
 
 const MessagingApp = () => {
@@ -30,6 +30,7 @@ const MessagingApp = () => {
   const { conversations } = useSelector((state) => state.conversations);
   const groupSubscriptionRef = useRef(null);
   const groupTypingSubscriptionRef = useRef(null);
+  const groupTypingTimersRef = useRef({});
 
   // Initialize WebSocket connection
   useEffect(() => {
@@ -71,6 +72,25 @@ const MessagingApp = () => {
         },
         onOnlineUsersUpdate: (onlineUsers) => {
           dispatch(updateOnlineUsers(onlineUsers));
+          // Map usernames to conversation userIds and update presence in real-time
+          if (Array.isArray(onlineUsers) && conversations && conversations.length) {
+            const offlineIds = [];
+            conversations.forEach((conv) => {
+              if (conv.type === 'PRIVATE') {
+                if (onlineUsers.includes(conv.name)) {
+                  dispatch(setUserOnline(conv.id));
+                } else {
+                  dispatch(setUserOffline(conv.id));
+                  offlineIds.push(conv.id);
+                }
+              }
+            });
+
+            // Fetch last-seen for users that just became offline
+            if (offlineIds.length > 0) {
+              dispatch(fetchStatus(offlineIds));
+            }
+          }
         },
       });
 
@@ -103,14 +123,35 @@ const MessagingApp = () => {
       }
 
       groupTypingSubscriptionRef.current = subscribeToGroupTyping(currentChat.id, (typingNotification) => {
-        dispatch(
-          setTyping({
-            userId: null,
-            groupId: typingNotification.groupId,
-            username: typingNotification.sender,
-            typing: typingNotification.typing,
-          })
-        );
+        // Ignore own typing events
+        if (typingNotification.sender === user?.username) return;
+        // Only update if the event belongs to the currently open group
+        if (Number(typingNotification.groupId) !== Number(currentChat.id)) return;
+        // Set typing true immediately
+        dispatch(setTyping({
+          userId: null,
+          groupId: Number(typingNotification.groupId),
+          username: typingNotification.sender,
+          typing: typingNotification.typing,
+        }));
+
+        // Safety: clear typing after 4s if no stop event (typing=false) received
+        const gid = Number(typingNotification.groupId);
+        if (groupTypingTimersRef.current[gid]) {
+          clearTimeout(groupTypingTimersRef.current[gid]);
+        }
+        if (typingNotification.typing) {
+          groupTypingTimersRef.current[gid] = setTimeout(() => {
+            dispatch(setTyping({ userId: null, groupId: gid, username: '', typing: false }));
+            delete groupTypingTimersRef.current[gid];
+          }, 4000);
+        } else {
+          // If a stop event arrives, clear any pending timer
+          if (groupTypingTimersRef.current[gid]) {
+            clearTimeout(groupTypingTimersRef.current[gid]);
+            delete groupTypingTimersRef.current[gid];
+          }
+        }
       });
     }
 

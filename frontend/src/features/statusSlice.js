@@ -12,8 +12,8 @@ export const fetchOnlineUsers = createAsyncThunk('status/fetchOnlineUsers', asyn
 });
 
 const initialState = {
-  userStatus: {}, // userId -> "online" or timestamp
-  onlineUsers: [],
+  userStatus: {}, // userId -> 'online' | timestamp | 'offline'
+  onlineUsers: [], // array of usernames
   status: 'idle',
   error: null,
 };
@@ -28,6 +28,17 @@ export const statusSlice = createSlice({
     updateUserStatus: (state, action) => {
       const { userId, status } = action.payload;
       state.userStatus[userId] = status;
+    },
+    setUserOnline: (state, action) => {
+      const userId = action.payload;
+      state.userStatus[userId] = 'online';
+    },
+    setUserOffline: (state, action) => {
+      const userId = action.payload;
+      // Mark as offline only if not explicitly online
+      if (state.userStatus[userId] !== 'online') {
+        state.userStatus[userId] = 'offline';
+      }
     },
   },
   extraReducers: (builder) => {
@@ -49,7 +60,7 @@ export const statusSlice = createSlice({
   },
 });
 
-export const { updateOnlineUsers, updateUserStatus } = statusSlice.actions;
+export const { updateOnlineUsers, updateUserStatus, setUserOnline, setUserOffline } = statusSlice.actions;
 
 export default statusSlice.reducer;
 

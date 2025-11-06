@@ -26,4 +26,15 @@ public class Contact {
     @JoinColumn(name = "contact_id")
     private User contact;
 
+    // For contacts that are not registered users yet
+    private Boolean invite;
+
+    // The plain identifier provided by the client (username/email/phone)
+    private String identifier;
+
+    // Optional: saved display name/email for invite contacts
+    private String inviteUsername;
+
+    private String inviteEmail;
+
 }

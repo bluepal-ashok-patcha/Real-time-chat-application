@@ -3,6 +3,8 @@ import SockJS from 'sockjs-client';
 
 let stompClient = null;
 let subscriptions = [];
+// Keep desired subscriptions for auto re-subscribe on reconnect
+let desiredSubscriptions = [];
 
 export const connectWebSocket = (token, username, callbacks) => {
   if (stompClient && stompClient.connected) {
@@ -44,34 +46,57 @@ export const connectWebSocket = (token, username, callbacks) => {
         subscriptions.push(subscription);
       }
 
-      // Subscribe to typing notifications
+      // Subscribe to typing notifications (user destination)
       if (callbacks.onTyping) {
-        const subscription = stompClient.subscribe(
+        // Preferred: user destination without embedding username
+        const subA = stompClient.subscribe(
+          `/user/queue/typing`,
+          (message) => {
+            const typingNotification = JSON.parse(message.body);
+            callbacks.onTyping(typingNotification);
+          }
+        );
+        subscriptions.push(subA);
+
+        // Fallback for setups that use username in the path
+        const subB = stompClient.subscribe(
           `/user/${username}/queue/typing`,
           (message) => {
             const typingNotification = JSON.parse(message.body);
             callbacks.onTyping(typingNotification);
           }
         );
+        subscriptions.push(subB);
+      }
+
+      // Subscribe to presence updates (public topic)
+      if (callbacks.onOnlineUsersUpdate) {
+        const subscription = stompClient.subscribe(`/topic/public`, (message) => {
+          const chatMessage = JSON.parse(message.body);
+          if (chatMessage.type === 'JOIN' || chatMessage.type === 'LEAVE') {
+            const onlineUsers = (chatMessage.content || '').split(',').filter(Boolean);
+            callbacks.onOnlineUsersUpdate(onlineUsers);
+          }
+        });
         subscriptions.push(subscription);
       }
 
-      // Subscribe to group messages
-      if (callbacks.onGroupMessage) {
-        const subscription = stompClient.subscribe(
-          `/topic/public`,
-          (message) => {
-            const chatMessage = JSON.parse(message.body);
-            if (chatMessage.type === 'JOIN' || chatMessage.type === 'LEAVE') {
-              // Online users update
-              if (callbacks.onOnlineUsersUpdate) {
-                const onlineUsers = chatMessage.content.split(',').filter(Boolean);
-                callbacks.onOnlineUsersUpdate(onlineUsers);
-              }
+      // Re-subscribe to any desired destinations (e.g., group and group typing) after reconnect
+      if (desiredSubscriptions.length) {
+        const newSubs = [];
+        desiredSubscriptions.forEach((ds) => {
+          const sub = stompClient.subscribe(ds.destination, (message) => {
+            try {
+              const payload = JSON.parse(message.body);
+              ds.callback(payload);
+            } catch (e) {
+              // Fallback raw body
+              ds.callback(message.body);
             }
-          }
-        );
-        subscriptions.push(subscription);
+          });
+          newSubs.push(sub);
+        });
+        subscriptions.push(...newSubs);
       }
     },
     onDisconnect: () => {
@@ -89,6 +114,8 @@ export const connectWebSocket = (token, username, callbacks) => {
 
 export const subscribeToGroup = (groupId, callback) => {
   if (!stompClient || !stompClient.connected) {
+    // Track desired subscription for auto (re)subscribe
+    desiredSubscriptions.push({ destination: `/topic/${groupId}`, callback });
     return null;
   }
 
@@ -98,11 +125,14 @@ export const subscribeToGroup = (groupId, callback) => {
   });
 
   subscriptions.push(subscription);
+  desiredSubscriptions.push({ destination: `/topic/${groupId}`, callback });
   return subscription;
 };
 
 export const subscribeToGroupTyping = (groupId, callback) => {
   if (!stompClient || !stompClient.connected) {
+    // Track desired subscription for auto (re)subscribe
+    desiredSubscriptions.push({ destination: `/topic/${groupId}/typing`, callback });
     return null;
   }
 
@@ -112,6 +142,7 @@ export const subscribeToGroupTyping = (groupId, callback) => {
   });
 
   subscriptions.push(subscription);
+  desiredSubscriptions.push({ destination: `/topic/${groupId}/typing`, callback });
   return subscription;
 };
 
@@ -145,6 +176,7 @@ export const disconnectWebSocket = () => {
   if (stompClient) {
     subscriptions.forEach((sub) => sub.unsubscribe());
     subscriptions = [];
+    desiredSubscriptions = [];
     stompClient.deactivate();
     stompClient = null;
   }

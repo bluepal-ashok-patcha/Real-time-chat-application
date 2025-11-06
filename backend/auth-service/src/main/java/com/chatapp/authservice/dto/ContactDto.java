@@ -17,4 +17,15 @@ public class ContactDto {
 
     private UserDto contact;
 
+    // For UX: when adding by identifier and user was not found
+    private Boolean invite;
+
+    // The identifier provided by the client (username/email/phone)
+    private String identifier;
+
+    // For displaying invite placeholder nicely
+    private String inviteUsername;
+
+    private String inviteEmail;
+
 }

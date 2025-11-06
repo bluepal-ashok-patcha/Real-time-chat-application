@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Box, List, ListItem, ListItemButton, Avatar, Typography, TextField, IconButton, Badge, Divider } from '@mui/material';
-import { Search as SearchIcon, MoreVert, AddCircleOutline, Logout } from '@mui/icons-material';
+import { Search as SearchIcon, MoreVert, Logout, Contacts as ContactsIcon } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { logout } from '../features/authSlice';
@@ -10,6 +10,7 @@ import { setCurrentChat } from '../features/messagesSlice';
 import CreateGroupModal from './CreateGroupModal';
 import AddContactModal from './AddContactModal';
 import ProfileMenu from './ProfileMenu';
+import ContactListDrawer from './ContactListDrawer';
 
 const Sidebar = () => {
   const dispatch = useDispatch();
@@ -20,6 +21,7 @@ const Sidebar = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [createGroupOpen, setCreateGroupOpen] = useState(false);
   const [addContactOpen, setAddContactOpen] = useState(false);
+  const [contactsDrawerOpen, setContactsDrawerOpen] = useState(false);
   const [profileMenuAnchor, setProfileMenuAnchor] = useState(null);
 
   useEffect(() => {
@@ -87,16 +89,13 @@ const Sidebar = () => {
   return (
     <Box className="flex flex-col h-full bg-[#f0f2f5] border-r border-gray-300" sx={{ width: '350px', minWidth: '350px' }}>
       {/* Header */}
-      <Box className="bg-[#075e54] p-4 flex items-center justify-between">
+      <Box className="bg-[#075e54] p-3 flex items-center justify-between">
         <Avatar src={user?.profilePictureUrl} className="cursor-pointer" onClick={(e) => setProfileMenuAnchor(e.currentTarget)}>
           {user?.username?.[0]?.toUpperCase()}
         </Avatar>
         <Box className="flex gap-1">
-          <IconButton size="small" className="text-white" onClick={() => setCreateGroupOpen(true)}>
-            <AddCircleOutline />
-          </IconButton>
-          <IconButton size="small" className="text-white" onClick={() => setAddContactOpen(true)}>
-            <AddCircleOutline />
+          <IconButton size="small" className="text-white" onClick={() => setContactsDrawerOpen(true)}>
+            <ContactsIcon />
           </IconButton>
           <IconButton size="small" className="text-white">
             <MoreVert />
@@ -195,8 +194,8 @@ const Sidebar = () => {
       </Box>
 
       {/* Modals */}
-      <CreateGroupModal open={createGroupOpen} onClose={() => setCreateGroupOpen(false)} />
-      <AddContactModal open={addContactOpen} onClose={() => setAddContactOpen(false)} />
+      {/* CreateGroup and AddContact modals removed per WhatsApp-like UX */}
+      <ContactListDrawer open={contactsDrawerOpen} onClose={() => setContactsDrawerOpen(false)} />
       <ProfileMenu anchorEl={profileMenuAnchor} onClose={() => setProfileMenuAnchor(null)} onLogout={handleLogout} />
     </Box>
   );
