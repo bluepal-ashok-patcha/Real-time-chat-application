@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { Box, Typography, IconButton } from '@mui/material';
-import { Done, DoneAll, Info } from '@mui/icons-material';
+import { Box, Typography, IconButton, Menu, MenuItem } from '@mui/material';
+import { Done, DoneAll, KeyboardArrowDown } from '@mui/icons-material';
 import { useSelector } from 'react-redux';
-import MessageInfoModal from './MessageInfoModal';
+import MessageInfoDrawer from './MessageInfoModal';
 
 const MessageBubble = ({ message }) => {
   const { user } = useSelector((state) => state.auth);
   const isSentByCurrentUser = message.sender?.id === user?.id;
-  const [infoModalOpen, setInfoModalOpen] = useState(false);
+  const [infoDrawerOpen, setInfoDrawerOpen] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState(null);
+  const [showArrow, setShowArrow] = useState(false);
 
   const formatTime = (timestamp) => {
     if (!timestamp) return '';
@@ -31,6 +33,8 @@ const MessageBubble = ({ message }) => {
     <Box
       className={`flex mb-1 ${isSentByCurrentUser ? 'justify-end' : 'justify-start'}`}
       sx={{ px: 1 }}
+      onMouseEnter={() => isSentByCurrentUser && message.groupId && setShowArrow(true)}
+      onMouseLeave={() => setShowArrow(false)}
     >
       <Box
         className={`max-w-[65%] rounded-lg px-2 py-1 ${
@@ -60,22 +64,68 @@ const MessageBubble = ({ message }) => {
             {formatTime(message.timestamp)}
           </Typography>
           {getStatusIcon()}
-          {/* Show info button for group messages sent by current user */}
+          {/* Show down arrow button for group messages sent by current user - appears on hover */}
           {isSentByCurrentUser && message.groupId && (
             <IconButton
               size="small"
               className="ml-1"
-              onClick={() => setInfoModalOpen(true)}
-              sx={{ padding: '2px' }}
+              onClick={(e) => setMenuAnchor(e.currentTarget)}
+              sx={{ 
+                padding: '2px',
+                opacity: showArrow ? 1 : 0,
+                transition: 'opacity 0.2s',
+                '&:hover': {
+                  backgroundColor: 'rgba(0, 0, 0, 0.05)',
+                },
+              }}
             >
-              <Info fontSize="small" className="text-gray-500" />
+              <KeyboardArrowDown fontSize="small" className="text-gray-500" />
             </IconButton>
           )}
         </Box>
       </Box>
-      <MessageInfoModal
-        open={infoModalOpen}
-        onClose={() => setInfoModalOpen(false)}
+      
+      {/* Menu for message options */}
+      <Menu
+        anchorEl={menuAnchor}
+        open={Boolean(menuAnchor)}
+        onClose={() => setMenuAnchor(null)}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'right',
+        }}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        PaperProps={{
+          sx: {
+            minWidth: 180,
+            boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+            borderRadius: '4px',
+          },
+        }}
+      >
+        <MenuItem
+          onClick={() => {
+            setInfoDrawerOpen(true);
+            setMenuAnchor(null);
+          }}
+          sx={{
+            fontSize: '14px',
+            py: 1,
+            '&:hover': {
+              backgroundColor: '#f5f6f6',
+            },
+          }}
+        >
+          Message info
+        </MenuItem>
+      </Menu>
+      
+      <MessageInfoDrawer
+        open={infoDrawerOpen}
+        onClose={() => setInfoDrawerOpen(false)}
         messageId={message.id}
       />
     </Box>

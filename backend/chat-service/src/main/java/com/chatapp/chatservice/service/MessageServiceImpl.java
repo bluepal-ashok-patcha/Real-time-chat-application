@@ -91,14 +91,14 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public Page<MessageDto> getChatHistory(Long userId1, Long userId2, Pageable pageable) {
-        Page<Message> messages = messageRepository.findBySenderIdAndReceiverIdOrReceiverIdAndSenderIdOrderByTimestampAsc(
+        Page<Message> messages = messageRepository.findBySenderIdAndReceiverIdOrReceiverIdAndSenderIdOrderByTimestampDesc(
                 userId1, userId2, userId1, userId2, pageable);
         return messages.map(this::convertToDto);
     }
 
     @Override
     public Page<MessageDto> getGroupChatHistory(Long groupId, Pageable pageable) {
-        Page<Message> messages = messageRepository.findByGroupIdOrderByTimestampAsc(groupId, pageable);
+        Page<Message> messages = messageRepository.findByGroupIdOrderByTimestampDesc(groupId, pageable);
         return messages.map(this::convertToDto);
     }
 
@@ -109,45 +109,120 @@ public class MessageServiceImpl implements MessageService {
 
         if (message.getGroupId() != null) {
             // Group message: update MessageStatus
+            // Skip if user is the sender (they don't have a MessageStatus entry)
+            if (message.getSenderId().equals(userId)) {
+                return; // Sender doesn't need to mark their own message as read
+            }
+            
+            // Find MessageStatus entry for this user
             MessageStatus messageStatus = messageStatusRepository.findById(new MessageStatus.MessageStatusId(messageId, userId))
-                    .orElseThrow(() -> new RuntimeException("Message status not found for user " + userId));
-            messageStatus.setStatus(MessageStatus.Status.READ);
-            messageStatusRepository.save(messageStatus);
+                    .orElse(null);
+            
+            if (messageStatus != null && messageStatus.getStatus() != MessageStatus.Status.READ) {
+                messageStatus.setStatus(MessageStatus.Status.READ);
+                messageStatusRepository.save(messageStatus);
+                
+                // Send read receipt to sender for group messages
+                userDao.findById(message.getSenderId()).ifPresent(sender -> {
+                    kafkaProducer.sendReadReceipt(ReadReceipt.builder()
+                            .messageId(messageId)
+                            .sender(sender.getUsername())
+                            .receiver(userDao.findById(userId)
+                                    .map(user -> user.getUsername())
+                                    .orElse("Unknown"))
+                            .build());
+                });
+            }
         } else {
             // One-on-one message: update Message status
-            if (message.getReceiverId().equals(userId)) {
-                message.setStatus(MessageStatus.Status.READ);
-                messageRepository.save(message);
+            if (message.getReceiverId() != null && message.getReceiverId().equals(userId)) {
+                if (message.getStatus() != MessageStatus.Status.READ) {
+                    message.setStatus(MessageStatus.Status.READ);
+                    messageRepository.save(message);
+                    
+                    // Send read receipt to sender
+                    kafkaProducer.sendReadReceipt(ReadReceipt.builder()
+                            .messageId(messageId)
+                            .sender(userDao.findById(message.getSenderId())
+                                    .map(user -> user.getUsername())
+                                    .orElse("Unknown"))
+                            .receiver(userDao.findById(message.getReceiverId())
+                                    .map(user -> user.getUsername())
+                                    .orElse("Unknown"))
+                            .build());
+                }
             }
-        }
-
-        if (message.getGroupId() == null) {
-            kafkaProducer.sendReadReceipt(ReadReceipt.builder()
-                    .messageId(messageId)
-                    .sender(userDao.findById(message.getSenderId()).get().getUsername())
-                    .receiver(userDao.findById(message.getReceiverId()).get().getUsername())
-                    .build());
         }
     }
 
     @Override
     public MessageInfoDto getMessageInfo(Long messageId) {
-        List<MessageStatus> messageStatuses = messageStatusRepository.findByMessageId(messageId);
-        List<UserDto> readBy = messageStatuses.stream()
-                .filter(ms -> ms.getStatus() == MessageStatus.Status.READ)
-                .map(ms -> userDao.findById(ms.getUserId())
-                        .map(user -> UserDto.builder().id(user.getId()).username(user.getUsername()).build())
-                        .orElse(null))
-                .collect(Collectors.toList());
-        List<UserDto> deliveredTo = messageStatuses.stream()
-                .filter(ms -> ms.getStatus() == MessageStatus.Status.DELIVERED)
-                .map(ms -> userDao.findById(ms.getUserId())
-                        .map(user -> UserDto.builder().id(user.getId()).username(user.getUsername()).build())
-                        .orElse(null))
-                .collect(Collectors.toList());
+        Message message = messageRepository.findById(messageId)
+                .orElseThrow(() -> new RuntimeException("Message not found"));
+
+        List<UserDto> readBy = new java.util.ArrayList<>();
+        List<UserDto> deliveredTo = new java.util.ArrayList<>();
+
+        if (message.getGroupId() != null) {
+            // Group message: check MessageStatus entries for all group members
+            List<MessageStatus> messageStatuses = messageStatusRepository.findByMessageId(messageId);
+            
+            // Get all group members
+            List<com.chatapp.chatservice.model.GroupUser> groupUsers = groupUserRepository.findByGroupId(message.getGroupId());
+            
+            for (com.chatapp.chatservice.model.GroupUser groupUser : groupUsers) {
+                // Skip sender - they always "read" their own message
+                if (groupUser.getUserId().equals(message.getSenderId())) {
+                    continue;
+                }
+                
+                // Find MessageStatus for this user
+                MessageStatus messageStatus = messageStatuses.stream()
+                        .filter(ms -> ms.getUserId().equals(groupUser.getUserId()))
+                        .findFirst()
+                        .orElse(null);
+                
+                userDao.findById(groupUser.getUserId()).ifPresent(user -> {
+                    UserDto userDto = UserDto.builder()
+                            .id(user.getId())
+                            .username(user.getUsername())
+                            .profilePictureUrl(user.getProfilePictureUrl())
+                            .build();
+                    
+                    if (messageStatus != null) {
+                        if (messageStatus.getStatus() == MessageStatus.Status.READ) {
+                            readBy.add(userDto);
+                        } else if (messageStatus.getStatus() == MessageStatus.Status.DELIVERED) {
+                            deliveredTo.add(userDto);
+                        }
+                    } else {
+                        // No MessageStatus entry means message hasn't been delivered yet
+                        // This shouldn't happen normally, but handle it gracefully
+                    }
+                });
+            }
+        } else {
+            // Private message: check Message.status field
+            UserDto receiver = userDao.findById(message.getReceiverId())
+                    .map(user -> UserDto.builder()
+                            .id(user.getId())
+                            .username(user.getUsername())
+                            .profilePictureUrl(user.getProfilePictureUrl())
+                            .build())
+                    .orElse(null);
+            
+            if (receiver != null) {
+                if (message.getStatus() == MessageStatus.Status.READ) {
+                    readBy.add(receiver);
+                } else if (message.getStatus() == MessageStatus.Status.DELIVERED) {
+                    deliveredTo.add(receiver);
+                }
+            }
+        }
+
         return MessageInfoDto.builder()
-                .readBy(readBy)
-                .deliveredTo(deliveredTo)
+                .readBy(readBy.stream().filter(java.util.Objects::nonNull).collect(Collectors.toList()))
+                .deliveredTo(deliveredTo.stream().filter(java.util.Objects::nonNull).collect(Collectors.toList()))
                 .build();
     }
 
@@ -188,6 +263,8 @@ public class MessageServiceImpl implements MessageService {
                             .lastMessageTimestamp(lastMessage.getTimestamp())
                             .unreadCount(unreadCount)
                             .profilePictureUrl(contactUser.getProfilePictureUrl())
+                            .lastMessageSenderId(lastMessage.getSenderId())
+                            .lastMessageStatus(lastMessage.getStatus())
                             .build());
                 }
             });
@@ -199,6 +276,16 @@ public class MessageServiceImpl implements MessageService {
             if (!lastGroupMessageList.isEmpty()) {
                 Message lastMessage = lastGroupMessageList.get(0);
                 long unreadCount = messageStatusRepository.countByGroupIdAndUserIdAndStatus(group.getId(), userId, MessageStatus.Status.DELIVERED);
+
+                // Aggregate last message status for groups: READ only if all non-sender members read, otherwise DELIVERED
+                java.util.List<MessageStatus> msList = messageStatusRepository.findByMessageId(lastMessage.getId());
+                java.util.List<com.chatapp.chatservice.model.GroupUser> groupUsers = groupUserRepository.findByGroupId(group.getId());
+                long targetCount = groupUsers.stream().filter(gu -> !gu.getUserId().equals(lastMessage.getSenderId())).count();
+                long readCount = msList.stream().filter(ms -> ms.getStatus() == MessageStatus.Status.READ).count();
+                MessageStatus.Status aggregateStatus = (targetCount > 0 && readCount == targetCount)
+                        ? MessageStatus.Status.READ
+                        : MessageStatus.Status.DELIVERED;
+
                 conversations.add(com.chatapp.chatservice.dto.ConversationDto.builder()
                         .id(group.getId())
                         .name(group.getName())
@@ -206,11 +293,31 @@ public class MessageServiceImpl implements MessageService {
                         .lastMessage(lastMessage.getContent())
                         .lastMessageTimestamp(lastMessage.getTimestamp())
                         .unreadCount(unreadCount)
+                        .lastMessageSenderId(lastMessage.getSenderId())
+                        .lastMessageStatus(aggregateStatus)
+                        .build());
+            } else {
+                // Include groups even when there is no message yet
+                conversations.add(com.chatapp.chatservice.dto.ConversationDto.builder()
+                        .id(group.getId())
+                        .name(group.getName())
+                        .type("GROUP")
+                        .lastMessage(null)
+                        .lastMessageTimestamp(null)
+                        .unreadCount(0)
+                        .lastMessageSenderId(null)
+                        .lastMessageStatus(null)
                         .build());
             }
         });
 
-        conversations.sort((c1, c2) -> c2.getLastMessageTimestamp().compareTo(c1.getLastMessageTimestamp()));
+//        conversations.sort((c1, c2) -> c2.getLastMessageTimestamp().compareTo(c1.getLastMessageTimestamp()));
+        conversations.sort((c1, c2) -> {
+            if (c1.getLastMessageTimestamp() == null && c2.getLastMessageTimestamp() == null) return 0;
+            if (c1.getLastMessageTimestamp() == null) return 1;
+            if (c2.getLastMessageTimestamp() == null) return -1;
+            return c2.getLastMessageTimestamp().compareTo(c1.getLastMessageTimestamp());
+        });
 
         return conversations;
     }

@@ -13,6 +13,15 @@ public class GroupRowMapper implements RowMapper<Group> {
         group.setId(rs.getLong("id"));
         group.setName(rs.getString("name"));
         group.setCreatedBy(rs.getLong("created_by"));
+        try {
+            group.setDescription(rs.getString("description"));
+        } catch (SQLException ignored) {
+            // Column may not exist on older schemas
+        }
+        try {
+            group.setImageUrl(rs.getString("image_url"));
+        } catch (SQLException ignored) {
+        }
         return group;
     }
 }

@@ -20,7 +20,14 @@ public class MessageListener {
         if (messageDto.getGroupId() != null) {
             messagingTemplate.convertAndSend("/topic/" + messageDto.getGroupId(), messageDto);
         } else {
-            messagingTemplate.convertAndSendToUser(messageDto.getReceiver().getUsername(), "/queue/reply", messageDto);
+            // Deliver to receiver
+            if (messageDto.getReceiver() != null && messageDto.getReceiver().getUsername() != null) {
+                messagingTemplate.convertAndSendToUser(messageDto.getReceiver().getUsername(), "/queue/reply", messageDto);
+            }
+            // Also deliver to sender to ensure both sides update consistently
+            if (messageDto.getSender() != null && messageDto.getSender().getUsername() != null) {
+                messagingTemplate.convertAndSendToUser(messageDto.getSender().getUsername(), "/queue/reply", messageDto);
+            }
         }
     }
 

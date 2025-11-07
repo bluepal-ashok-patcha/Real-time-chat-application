@@ -39,6 +39,7 @@ const initialState = {
   status: 'idle',
   error: null,
   typing: {}, // { userId/groupId: { username, typing: boolean } }
+  pagination: {}, // { chatKey: { page: number, hasMore: boolean, loading: boolean } }
 };
 
 export const messagesSlice = createSlice({
@@ -47,17 +48,72 @@ export const messagesSlice = createSlice({
   reducers: {
     addMessage: (state, action) => {
       const message = action.payload;
-      const chatKey = message.groupId ? `group_${message.groupId}` : `private_${message.sender.id}_${message.receiver?.id}`;
+      // Normalize chatKey for private messages to ensure consistent key regardless of sender/receiver order
+      let chatKey;
+      if (message.groupId) {
+        chatKey = `group_${message.groupId}`;
+      } else {
+        // Sort IDs to ensure consistent key (e.g., private_1_2 and private_2_1 both become private_1_2)
+        const userIds = [message.sender.id, message.receiver?.id].filter(Boolean).sort((a, b) => a - b);
+        chatKey = `private_${userIds[0]}_${userIds[1]}`;
+      }
       
       if (!state.messages[chatKey]) {
         state.messages[chatKey] = [];
       }
       
-      // Check if message already exists
+      // Check if message already exists - skip if already present
       if (!state.messages[chatKey].find((m) => m.id === message.id)) {
-        state.messages[chatKey].push(message);
-        // Sort by timestamp
-        state.messages[chatKey].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        // Ensure timestamp is valid - if missing or invalid, use current time
+        let messageTime = message.timestamp ? new Date(message.timestamp).getTime() : null;
+        if (!messageTime || isNaN(messageTime)) {
+          messageTime = Date.now();
+        }
+        
+        // Normalize timestamp to ISO string if it's missing
+        const normalizedMessage = {
+          ...message,
+          timestamp: message.timestamp || new Date(messageTime).toISOString()
+        };
+        
+        state.messages[chatKey].push(normalizedMessage);
+        
+        // Sort by timestamp (ascending - oldest first, newest last)
+        state.messages[chatKey].sort((a, b) => {
+          const timeA = a.timestamp ? new Date(a.timestamp).getTime() : Date.now();
+          const timeB = b.timestamp ? new Date(b.timestamp).getTime() : Date.now();
+          // If timestamps are equal, sort by ID to ensure stable sort
+          if (timeA === timeB) {
+            return (a.id || 0) - (b.id || 0);
+          }
+          return timeA - timeB;
+        });
+      }
+    },
+    addMessageWithKey: (state, action) => {
+      const { chatKey, message } = action.payload;
+      if (!chatKey || !message) return;
+      if (!state.messages[chatKey]) {
+        state.messages[chatKey] = [];
+      }
+      if (!state.messages[chatKey].find((m) => m.id === message.id)) {
+        let messageTime = message.timestamp ? new Date(message.timestamp).getTime() : null;
+        if (!messageTime || isNaN(messageTime)) {
+          messageTime = Date.now();
+        }
+        const normalizedMessage = {
+          ...message,
+          timestamp: message.timestamp || new Date(messageTime).toISOString(),
+        };
+        state.messages[chatKey].push(normalizedMessage);
+        state.messages[chatKey].sort((a, b) => {
+          const timeA = a.timestamp ? new Date(a.timestamp).getTime() : Date.now();
+          const timeB = b.timestamp ? new Date(b.timestamp).getTime() : Date.now();
+          if (timeA === timeB) {
+            return (a.id || 0) - (b.id || 0);
+          }
+          return timeA - timeB;
+        });
       }
     },
     setCurrentChat: (state, action) => {
@@ -88,33 +144,123 @@ export const messagesSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      .addCase(fetchMessages.pending, (state) => {
+      .addCase(fetchMessages.pending, (state, action) => {
         state.status = 'loading';
+        const { userId1, userId2 } = action.meta.arg;
+        const userIds = [userId1, userId2].filter(Boolean).sort((a, b) => a - b);
+        const chatKey = `private_${userIds[0]}_${userIds[1]}`;
+        if (!state.pagination[chatKey]) {
+          state.pagination[chatKey] = { page: 0, hasMore: true, loading: false };
+        }
+        state.pagination[chatKey].loading = true;
       })
       .addCase(fetchMessages.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        const { userId1, userId2 } = action.meta.arg;
-        const chatKey = `private_${userId1}_${userId2}`;
-        state.messages[chatKey] = action.payload.messages;
+        const { userId1, userId2, page = 0 } = action.meta.arg;
+        const userIds = [userId1, userId2].filter(Boolean).sort((a, b) => a - b);
+        const chatKey = `private_${userIds[0]}_${userIds[1]}`;
+        const incoming = action.payload.messages || [];
+        // Backend returns DESC (newest first), reverse for display (oldest first)
+        const reversed = [...incoming].reverse();
+        if (page === 0) {
+          // First load: replace all
+          state.messages[chatKey] = reversed;
+        } else {
+          // Load more: prepend older messages
+          const existing = state.messages[chatKey] || [];
+          state.messages[chatKey] = [...reversed, ...existing];
+        }
+        if (!state.pagination[chatKey]) {
+          state.pagination[chatKey] = { page: 0, hasMore: true, loading: false };
+        }
+        state.pagination[chatKey].page = page;
+        state.pagination[chatKey].hasMore = action.payload.hasMore;
+        state.pagination[chatKey].loading = false;
       })
-      .addCase(fetchGroupMessages.fulfilled, (state, action) => {
+      .addCase(fetchMessages.rejected, (state, action) => {
+        state.status = 'failed';
+        const { userId1, userId2 } = action.meta.arg;
+        const userIds = [userId1, userId2].filter(Boolean).sort((a, b) => a - b);
+        const chatKey = `private_${userIds[0]}_${userIds[1]}`;
+        if (state.pagination[chatKey]) {
+          state.pagination[chatKey].loading = false;
+        }
+      })
+      .addCase(fetchGroupMessages.pending, (state, action) => {
         const { groupId } = action.meta.arg;
         const chatKey = `group_${groupId}`;
-        state.messages[chatKey] = action.payload.messages;
+        if (!state.pagination[chatKey]) {
+          state.pagination[chatKey] = { page: 0, hasMore: true, loading: false };
+        }
+        state.pagination[chatKey].loading = true;
+      })
+      .addCase(fetchGroupMessages.fulfilled, (state, action) => {
+        const { groupId, page = 0 } = action.meta.arg;
+        const chatKey = `group_${groupId}`;
+        const incoming = action.payload.messages || [];
+        const reversed = [...incoming].reverse();
+        if (page === 0) {
+          state.messages[chatKey] = reversed;
+        } else {
+          const existing = state.messages[chatKey] || [];
+          state.messages[chatKey] = [...reversed, ...existing];
+        }
+        if (!state.pagination[chatKey]) {
+          state.pagination[chatKey] = { page: 0, hasMore: true, loading: false };
+        }
+        state.pagination[chatKey].page = page;
+        state.pagination[chatKey].hasMore = action.payload.hasMore;
+        state.pagination[chatKey].loading = false;
+      })
+      .addCase(fetchGroupMessages.rejected, (state, action) => {
+        const { groupId } = action.meta.arg;
+        const chatKey = `group_${groupId}`;
+        if (state.pagination[chatKey]) {
+          state.pagination[chatKey].loading = false;
+        }
       })
       .addCase(sendMessage.fulfilled, (state, action) => {
         const message = action.payload;
-        const chatKey = message.groupId
-          ? `group_${message.groupId}`
-          : `private_${message.sender.id}_${message.receiver?.id}`;
+        // Normalize chatKey for private messages to ensure consistent key regardless of sender/receiver order
+        let chatKey;
+        if (message.groupId) {
+          chatKey = `group_${message.groupId}`;
+        } else {
+          // Sort IDs to ensure consistent key (e.g., private_1_2 and private_2_1 both become private_1_2)
+          const userIds = [message.sender.id, message.receiver?.id].filter(Boolean).sort((a, b) => a - b);
+          chatKey = `private_${userIds[0]}_${userIds[1]}`;
+        }
         
         if (!state.messages[chatKey]) {
           state.messages[chatKey] = [];
         }
         
+        // Check if message already exists - skip if already present
         if (!state.messages[chatKey].find((m) => m.id === message.id)) {
-          state.messages[chatKey].push(message);
-          state.messages[chatKey].sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+          // Ensure timestamp is valid - if missing or invalid, use current time
+          let messageTime = message.timestamp ? new Date(message.timestamp).getTime() : null;
+          if (!messageTime || isNaN(messageTime)) {
+            messageTime = Date.now();
+          }
+          
+          // Normalize timestamp to ISO string if it's missing
+          const normalizedMessage = {
+            ...message,
+            timestamp: message.timestamp || new Date(messageTime).toISOString()
+          };
+          
+          state.messages[chatKey].push(normalizedMessage);
+          
+          // Sort by timestamp (ascending - oldest first, newest last)
+          state.messages[chatKey].sort((a, b) => {
+            const timeA = a.timestamp ? new Date(a.timestamp).getTime() : Date.now();
+            const timeB = b.timestamp ? new Date(b.timestamp).getTime() : Date.now();
+            // If timestamps are equal, sort by ID to ensure stable sort
+            if (timeA === timeB) {
+              return (a.id || 0) - (b.id || 0);
+            }
+            return timeA - timeB;
+          });
         }
       })
       .addCase(markMessageAsRead.fulfilled, (state, action) => {
@@ -129,6 +275,6 @@ export const messagesSlice = createSlice({
   },
 });
 
-export const { addMessage, setCurrentChat, clearMessages, updateMessageStatus, setTyping } = messagesSlice.actions;
+export const { addMessage, addMessageWithKey, setCurrentChat, clearMessages, updateMessageStatus, setTyping } = messagesSlice.actions;
 
 export default messagesSlice.reducer;

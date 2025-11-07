@@ -9,11 +9,13 @@ import {
   fetchConversations,
   updateConversation,
   markConversationAsRead,
+  setCurrentUserId as setConvCurrentUserId,
 } from '../features/conversationsSlice';
 import {
   fetchMessages,
   fetchGroupMessages,
   addMessage,
+  addMessageWithKey,
   setCurrentChat,
   setTyping,
   updateMessageStatus,
@@ -21,6 +23,8 @@ import {
 } from '../features/messagesSlice';
 import { fetchOnlineUsers, updateOnlineUsers, setUserOnline, setUserOffline, fetchStatus } from '../features/statusSlice';
 import { connectWebSocket, disconnectWebSocket, subscribeToGroup, subscribeToGroupTyping } from '../services/websocket';
+import { initNotifications, setNotificationClickHandler, showMessageNotification } from '../services/notifications';
+import api from '../services/api';
 
 const MessagingApp = () => {
   const dispatch = useDispatch();
@@ -31,23 +35,179 @@ const MessagingApp = () => {
   const groupSubscriptionRef = useRef(null);
   const groupTypingSubscriptionRef = useRef(null);
   const groupTypingTimersRef = useRef({});
+  const currentChatRef = useRef(currentChat);
+  const userRef = useRef(user);
+  const selectedContactRef = useRef(selectedContact);
+
+  // Update refs whenever they change
+  useEffect(() => {
+    currentChatRef.current = currentChat;
+  }, [currentChat]);
+  
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
+
+  useEffect(() => {
+    selectedContactRef.current = selectedContact;
+  }, [selectedContact]);
 
   // Initialize WebSocket connection
   useEffect(() => {
+    // Initialize browser notifications and click behavior
+    initNotifications();
+    setNotificationClickHandler(async (data) => {
+      try {
+        if (data?.type === 'PRIVATE' && data?.userId && data?.username) {
+          dispatch(setCurrentChat({ type: 'PRIVATE', id: data.userId }));
+          // also update selected contact
+          const { selectContact } = await import('../features/contactsSlice');
+          dispatch(selectContact({ id: data.userId, username: data.username, profilePictureUrl: data.profilePictureUrl, type: 'PRIVATE' }));
+        } else if (data?.type === 'GROUP' && data?.groupId) {
+          // fetch group name then open
+          try {
+            const res = await api.get(`/groups/${data.groupId}`);
+            const name = res.data?.name || 'Group';
+            const imageUrl = res.data?.imageUrl || null;
+            dispatch(setCurrentChat({ type: 'GROUP', id: data.groupId }));
+            const { selectContact } = await import('../features/contactsSlice');
+            dispatch(selectContact({ id: data.groupId, username: name, profilePictureUrl: imageUrl, type: 'GROUP' }));
+          } catch (_) {}
+        }
+      } catch (_) {}
+    });
+  }, [dispatch]);
+
+  // Handle tab close to properly disconnect WebSocket
+  useEffect(() => {
+    const handleBeforeUnload = (event) => {
+      // Disconnect WebSocket when tab is closing
+      // Use synchronous disconnect to ensure it completes before page unloads
+      try {
+        disconnectWebSocket();
+      } catch (e) {
+        console.warn('Error disconnecting WebSocket on unload:', e);
+      }
+    };
+
+    const handlePageHide = () => {
+      // Also handle pagehide event (more reliable than beforeunload in some browsers)
+      try {
+        disconnectWebSocket();
+      } catch (e) {
+        console.warn('Error disconnecting WebSocket on page hide:', e);
+      }
+    };
+
+    // Add event listeners
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handlePageHide);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handlePageHide);
+    };
+  }, []);
+
+  useEffect(() => {
     if (token && user?.username) {
+      // Ensure conversations slice knows current user id for unread logic
+      if (user?.id) {
+        dispatch(setConvCurrentUserId(user.id));
+      }
       connectWebSocket(token, user.username, {
         onPrivateMessage: (message) => {
-          dispatch(addMessage(message));
-          dispatch(updateConversation(message));
+          // Normalize private message to include missing receiver for consistent keys
+          let normalized = message;
+          try {
+            if (!message.groupId) {
+              const meId = userRef.current?.id;
+              const meUsername = userRef.current?.username;
+              const selected = selectedContactRef.current;
+              const selectedUsername = selected?.username;
+
+              // Ensure sender object
+              if (!normalized.sender) {
+                if (typeof message.sender === 'object' && message.sender?.id) {
+                  // ok
+                } else if (message.senderId) {
+                  normalized = { ...normalized, sender: { id: message.senderId } };
+                } else if (typeof message.sender === 'string' && selected && message.sender === selectedUsername) {
+                  normalized = { ...normalized, sender: { id: selected.id } };
+                }
+              }
+
+              // Ensure receiver object
+              if (!normalized.receiver) {
+                if (typeof message.receiver === 'object' && message.receiver?.id) {
+                  // ok
+                } else if (typeof message.receiver === 'string') {
+                  if (meUsername && message.receiver === meUsername) {
+                    normalized = { ...normalized, receiver: { id: meId } };
+                  } else if (selected && message.receiver === selectedUsername) {
+                    normalized = { ...normalized, receiver: { id: selected.id } };
+                  }
+                } else if (meId) {
+                  // default to me for incoming
+                  normalized = { ...normalized, receiver: { id: meId } };
+                }
+              }
+            }
+          } catch (_) {}
+          // Compute a reliable chat key like groups do
+          if (!normalized.groupId) {
+            const meId = userRef.current?.id;
+            const otherId = normalized.sender?.id === meId ? normalized.receiver?.id : normalized.sender?.id;
+            const a = Math.min(meId || 0, otherId || 0);
+            const b = Math.max(meId || 0, otherId || 0);
+            const privateKey = `private_${a}_${b}`;
+          dispatch(addMessageWithKey({ chatKey: privateKey, message: normalized }));
+
+          // Show notification if message from other user and tab not focused or chat not open
+          const fromOther = normalized.sender?.id && normalized.sender.id !== meId;
+          const latestCurrentChat = currentChatRef.current;
+          const notActiveChat = !(latestCurrentChat && latestCurrentChat.type === 'PRIVATE' && latestCurrentChat.id === (normalized.sender?.id === meId ? normalized.receiver?.id : normalized.sender?.id));
+          if (fromOther && (document.visibilityState !== 'visible' || notActiveChat)) {
+            showMessageNotification({
+              title: normalized.sender?.username || 'New message',
+              body: normalized.content,
+              icon: normalized.sender?.profilePictureUrl || undefined,
+              data: { type: 'PRIVATE', userId: normalized.sender?.id, username: normalized.sender?.username, profilePictureUrl: normalized.sender?.profilePictureUrl, tag: `p_${normalized.sender?.id}` },
+            });
+          }
+          } else {
+            dispatch(addMessage(normalized));
+          }
+          dispatch(updateConversation(normalized));
           
           // Mark conversation as read if it's the current chat
-          if (currentChat?.id === message.sender.id && currentChat?.type === 'PRIVATE') {
-            dispatch(markConversationAsRead({ conversationId: message.sender.id, type: 'PRIVATE' }));
+          // Use refs to get latest values without causing reconnection
+          const latestCurrentChat = currentChatRef.current;
+          const latestUser = userRef.current;
+          const isCurrentChat = latestCurrentChat?.type === 'PRIVATE' && (
+            (latestCurrentChat.id === message.sender?.id && latestUser?.id === message.receiver?.id) ||
+            (latestCurrentChat.id === message.receiver?.id && latestUser?.id === message.sender?.id)
+          );
+          
+          if (isCurrentChat) {
+            const conversationId = latestCurrentChat.id;
+            dispatch(markConversationAsRead({ conversationId, type: 'PRIVATE' }));
           }
         },
         onGroupMessage: (message) => {
           dispatch(addMessage(message));
           dispatch(updateConversation(message));
+          // Show notification for group when not viewing that group
+          const latestCurrentChat = currentChatRef.current;
+          const notActiveChat = !(latestCurrentChat && latestCurrentChat.type === 'GROUP' && latestCurrentChat.id === message.groupId);
+          if (document.visibilityState !== 'visible' || notActiveChat) {
+            showMessageNotification({
+              title: `New message in group`,
+              body: message.content,
+              data: { type: 'GROUP', groupId: message.groupId, tag: `g_${message.groupId}` },
+            });
+          }
         },
         onReadReceipt: (readReceipt) => {
           // Update message status in real-time when read receipt is received via WebSocket
@@ -55,12 +215,17 @@ const MessagingApp = () => {
           dispatch(updateMessageStatus({ messageId: readReceipt.messageId, status: 'READ' }));
         },
         onTyping: (typingNotification) => {
-          // Handle private typing: match by username against the active chat
+          // Handle private typing with latest refs (avoid stale closures)
           if (!typingNotification.groupId) {
-            if (currentChat?.type === 'PRIVATE' && typingNotification.sender === selectedContact?.username) {
+            const latestCurrentChat = currentChatRef.current;
+            const latestSelected = selectedContactRef.current;
+            if (
+              latestCurrentChat?.type === 'PRIVATE' &&
+              typingNotification.sender === latestSelected?.username
+            ) {
               dispatch(
                 setTyping({
-                  userId: selectedContact.id,
+                  userId: latestSelected.id,
                   groupId: null,
                   username: typingNotification.sender,
                   typing: typingNotification.typing,
@@ -104,7 +269,7 @@ const MessagingApp = () => {
         disconnectWebSocket();
       };
     }
-  }, [token, user, selectedContact, currentChat, dispatch]);
+  }, [token, user?.username, user?.id, dispatch]); // Remove currentChat and selectedContact from dependencies to prevent reconnection
 
   // Subscribe to group when group chat is selected
   useEffect(() => {
@@ -181,9 +346,14 @@ const MessagingApp = () => {
   // Mark messages as read when viewing chat (real-time)
   useEffect(() => {
     if (selectedContact && currentChat && user?.id) {
-      const chatKey = currentChat.type === 'GROUP'
-        ? `group_${currentChat.id}`
-        : `private_${user.id}_${currentChat.id}`;
+      let chatKey;
+      if (currentChat.type === 'GROUP') {
+        chatKey = `group_${currentChat.id}`;
+      } else {
+        // Normalize chatKey for private messages to ensure consistent key regardless of user order
+        const userIds = [user.id, currentChat.id].filter(Boolean).sort((a, b) => a - b);
+        chatKey = `private_${userIds[0]}_${userIds[1]}`;
+      }
       
       const chatMessages = messages[chatKey] || [];
       

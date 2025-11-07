@@ -9,6 +9,7 @@ import { setTyping } from '../features/messagesSlice';
 const MessageInput = ({ selectedContact }) => {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
+  const { blockedUsers = [] } = useSelector((state) => state.blocks || {});
   const [message, setMessage] = useState('');
   const typingTimeoutRef = useRef(null);
 
@@ -104,8 +105,16 @@ const MessageInput = ({ selectedContact }) => {
     return null;
   }
 
+  const isBlocked = selectedContact?.type === 'PRIVATE' && blockedUsers?.some((b) => b?.blockedUser?.id === selectedContact?.id);
+
   return (
-    <Box className="bg-[#f0f2f5] p-2 flex items-center gap-2 border-t border-gray-300">
+    <Box className="bg-[#f0f2f5] p-2 border-t border-gray-300">
+      {isBlocked && (
+        <Box className="mb-2 text-center text-xs text-gray-600">
+          You blocked this contact. Unblock to send messages.
+        </Box>
+      )}
+      <Box className="flex items-center gap-2">
       <IconButton size="small" className="text-gray-600">
         <EmojiEmotions />
       </IconButton>
@@ -125,6 +134,7 @@ const MessageInput = ({ selectedContact }) => {
         onKeyPress={handleKeyPress}
         variant="outlined"
         size="small"
+          disabled={isBlocked}
         InputProps={{
           sx: {
             backgroundColor: 'white',
@@ -139,7 +149,7 @@ const MessageInput = ({ selectedContact }) => {
         size="small"
         className="bg-[#25d366] text-white hover:bg-[#20ba5a]"
         onClick={handleSend}
-        disabled={!message.trim()}
+          disabled={!message.trim() || isBlocked}
         sx={{
           backgroundColor: '#25d366',
           color: 'white',
@@ -149,6 +159,7 @@ const MessageInput = ({ selectedContact }) => {
       >
         <Send />
       </IconButton>
+      </Box>
     </Box>
   );
 };

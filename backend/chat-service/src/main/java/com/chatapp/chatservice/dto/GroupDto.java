@@ -21,4 +21,8 @@ public class GroupDto {
 
     private Set<UserDto> users;
 
+    private String description;
+
+    private String imageUrl;
+
 }

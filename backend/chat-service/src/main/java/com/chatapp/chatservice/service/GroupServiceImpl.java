@@ -33,6 +33,8 @@ public class GroupServiceImpl implements GroupService {
         Group group = Group.builder()
                 .name(groupDto.getName())
                 .createdBy(groupDto.getCreatedBy())
+                .description(groupDto.getDescription())
+                .imageUrl(groupDto.getImageUrl())
                 .build();
         groupRepository.save(group);
         groupUserRepository.save(GroupUser.builder().groupId(group.getId()).userId(group.getCreatedBy()).build());
@@ -57,16 +59,42 @@ public class GroupServiceImpl implements GroupService {
         return convertToDto(group);
     }
 
+    @Override
+    public GroupDto getGroup(Long groupId) {
+        Group group = groupRepository.findById(groupId).orElseThrow(() -> new RuntimeException("Group not found"));
+        return convertToDto(group);
+    }
+
+    @Override
+    public GroupDto updateGroup(Long groupId, GroupDto update) {
+        Group group = groupRepository.findById(groupId).orElseThrow(() -> new RuntimeException("Group not found"));
+        if (update.getName() != null && !update.getName().isBlank()) {
+            group.setName(update.getName());
+        }
+        if (update.getDescription() != null) {
+            group.setDescription(update.getDescription());
+        }
+        if (update.getImageUrl() != null) {
+            group.setImageUrl(update.getImageUrl());
+        }
+        groupRepository.save(group);
+        return convertToDto(group);
+    }
+
     private GroupDto convertToDto(Group group) {
         return GroupDto.builder()
                 .id(group.getId())
                 .name(group.getName())
                 .createdBy(group.getCreatedBy())
+                .description(group.getDescription())
+                .imageUrl(group.getImageUrl())
                 .users(groupUserRepository.findByGroupId(group.getId()).stream()
                         .map(groupUser -> userDao.findById(groupUser.getUserId())
                                 .map(user -> UserDto.builder()
                                         .id(user.getId())
                                         .username(user.getUsername())
+                                        .profilePictureUrl(user.getProfilePictureUrl())
+                                        .about(user.getAbout())
                                         .build())
                                 .orElse(null))
                         .collect(Collectors.toSet()))

@@ -10,4 +10,8 @@ public interface GroupService {
 
     GroupDto removeUserFromGroup(Long groupId, Long userId);
 
+    GroupDto getGroup(Long groupId);
+
+    GroupDto updateGroup(Long groupId, GroupDto update);
+
 }

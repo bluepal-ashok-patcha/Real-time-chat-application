@@ -20,5 +20,8 @@ public class ConversationDto {
     private LocalDateTime lastMessageTimestamp;
     private long unreadCount;
     private String profilePictureUrl;
+    // For WhatsApp-like ticks in conversation list (only relevant for private chats)
+    private Long lastMessageSenderId;
+    private com.chatapp.chatservice.model.MessageStatus.Status lastMessageStatus;
 
 }

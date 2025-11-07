@@ -42,4 +42,14 @@ public class GroupController {
         return ResponseEntity.ok(groupService.removeUserFromGroup(groupId, userId));
     }
 
+    @GetMapping("/{groupId}")
+    public ResponseEntity<GroupDto> getGroup(@PathVariable Long groupId) {
+        return ResponseEntity.ok(groupService.getGroup(groupId));
+    }
+
+    @PutMapping("/{groupId}")
+    public ResponseEntity<GroupDto> updateGroup(@PathVariable Long groupId, @RequestBody GroupDto update) {
+        return ResponseEntity.ok(groupService.updateGroup(groupId, update));
+    }
+
 }

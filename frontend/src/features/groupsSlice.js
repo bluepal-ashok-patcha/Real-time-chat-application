@@ -16,6 +16,15 @@ export const removeUserFromGroup = createAsyncThunk('groups/removeUserFromGroup'
   return response.data;
 });
 
+export const updateGroup = createAsyncThunk('groups/updateGroup', async ({ groupId, name, description, imageUrl }) => {
+  const payload = {};
+  if (name !== undefined) payload.name = name;
+  if (description !== undefined) payload.description = description;
+  if (imageUrl !== undefined) payload.imageUrl = imageUrl;
+  const response = await api.put(`/groups/${groupId}`, payload);
+  return response.data;
+});
+
 const initialState = {
   groups: [],
   status: 'idle',
@@ -57,6 +66,14 @@ export const groupsSlice = createSlice({
         const index = state.groups.findIndex((g) => g.id === action.payload.id);
         if (index !== -1) {
           state.groups[index] = action.payload;
+        }
+      })
+      .addCase(updateGroup.fulfilled, (state, action) => {
+        const index = state.groups.findIndex((g) => g.id === action.payload.id);
+        if (index !== -1) {
+          state.groups[index] = action.payload;
+        } else {
+          state.groups.push(action.payload);
         }
       });
   },

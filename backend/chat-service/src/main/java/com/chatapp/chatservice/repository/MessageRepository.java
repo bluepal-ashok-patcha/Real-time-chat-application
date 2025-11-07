@@ -21,12 +21,18 @@ public interface MessageRepository extends JpaRepository<Message, Long> {
 
     Page<Message> findByGroupIdOrderByTimestampAsc(Long groupId, Pageable pageable);
 
+    Page<Message> findBySenderIdAndReceiverIdOrReceiverIdAndSenderIdOrderByTimestampDesc(
+            Long senderId, Long receiverId, Long senderId2, Long receiverId2, Pageable pageable);
+
+    Page<Message> findByGroupIdOrderByTimestampDesc(Long groupId, Pageable pageable);
+
     @Query("SELECT m FROM Message m WHERE (m.senderId = :userId1 AND m.receiverId = :userId2) OR (m.senderId = :userId2 AND m.receiverId = :userId1) ORDER BY m.timestamp DESC")
     List<Message> findLastPrivateMessage(@Param("userId1") Long userId1, @Param("userId2") Long userId2, Pageable pageable);
 
     @Query("SELECT m FROM Message m WHERE m.groupId = :groupId ORDER BY m.timestamp DESC")
     List<Message> findLastGroupMessage(@Param("groupId") Long groupId, Pageable pageable);
 
-    @Query("SELECT COUNT(m) FROM Message m WHERE ((m.senderId = :senderId AND m.receiverId = :receiverId) OR (m.senderId = :receiverId AND m.receiverId = :senderId)) AND m.status = :status")
+    // Count only messages sent by :senderId to :receiverId with given status (don't count current user's own messages)
+    @Query("SELECT COUNT(m) FROM Message m WHERE m.senderId = :senderId AND m.receiverId = :receiverId AND m.status = :status")
     long countUnreadPrivateMessages(@Param("senderId") Long senderId, @Param("receiverId") Long receiverId, @Param("status") MessageStatus.Status status);
 }

@@ -210,7 +210,20 @@ const ContactListDrawer = ({ open, onClose }) => {
                     }
                     label={
                       <Box className="flex items-center">
-                        <Avatar src={c.contact?.profilePictureUrl} sx={{ width: 32, height: 32, mr: 1 }}>
+                        <Avatar 
+                          src={c.contact?.profilePictureUrl} 
+                          sx={{ 
+                            width: 32, 
+                            height: 32, 
+                            mr: 1,
+                            flexShrink: 0,
+                            '& .MuiAvatar-img': {
+                              objectFit: 'cover',
+                              width: '100%',
+                              height: '100%',
+                            },
+                          }}
+                        >
                           {c.contact?.username?.[0]?.toUpperCase()}
                         </Avatar>
                         <Typography>{c.contact?.username}</Typography>
@@ -272,7 +285,37 @@ const ContactListDrawer = ({ open, onClose }) => {
           <ListItem key={c.id} disablePadding>
             <ListItemButton onClick={() => handleOpenChat(c)}>
               <ListItemAvatar>
-                <Avatar src={c.contact?.profilePictureUrl}>{c.contact?.username?.[0]?.toUpperCase()}</Avatar>
+                <Avatar
+                  src={c.contact?.profilePictureUrl}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    // lazy import to avoid circular import
+                    import('./ImagePreviewDialog').then(({ default: ImagePreviewDialog }) => {
+                      const container = document.createElement('div');
+                      document.body.appendChild(container);
+                      const React = require('react');
+                      const { createRoot } = require('react-dom/client');
+                      const root = createRoot(container);
+                      const close = () => {
+                        root.unmount();
+                        container.remove();
+                      };
+                      root.render(React.createElement(ImagePreviewDialog, { open: true, onClose: close, src: c.contact?.profilePictureUrl, title: c.contact?.username }));
+                    });
+                  }}
+                  className="cursor-pointer flex-shrink-0"
+                  sx={{
+                    width: 40,
+                    height: 40,
+                    '& .MuiAvatar-img': {
+                      objectFit: 'cover',
+                      width: '100%',
+                      height: '100%',
+                    },
+                  }}
+                >
+                  {c.contact?.username?.[0]?.toUpperCase()}
+                </Avatar>
               </ListItemAvatar>
               <ListItemText primary={c.contact?.username} secondary={c.contact?.about} />
             </ListItemButton>

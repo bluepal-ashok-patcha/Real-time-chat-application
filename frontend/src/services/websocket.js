@@ -32,6 +32,16 @@ export const connectWebSocket = (token, username, callbacks) => {
           }
         );
         subscriptions.push(subscription);
+
+        // Also subscribe to user-scoped reply queue without username (some brokers route here)
+        const subAlt = stompClient.subscribe(
+          `/user/queue/reply`,
+          (message) => {
+            const receivedMessage = JSON.parse(message.body);
+            callbacks.onPrivateMessage(receivedMessage);
+          }
+        );
+        subscriptions.push(subAlt);
       }
 
       // Subscribe to read receipts
@@ -44,6 +54,16 @@ export const connectWebSocket = (token, username, callbacks) => {
           }
         );
         subscriptions.push(subscription);
+
+        // Also subscribe to user-scoped read queue without username (some brokers route here)
+        const subAltRead = stompClient.subscribe(
+          `/user/queue/read`,
+          (message) => {
+            const readReceipt = JSON.parse(message.body);
+            callbacks.onReadReceipt(readReceipt);
+          }
+        );
+        subscriptions.push(subAltRead);
       }
 
       // Subscribe to typing notifications (user destination)
@@ -174,11 +194,30 @@ export const sendTypingNotification = (typingNotification) => {
 
 export const disconnectWebSocket = () => {
   if (stompClient) {
-    subscriptions.forEach((sub) => sub.unsubscribe());
-    subscriptions = [];
-    desiredSubscriptions = [];
-    stompClient.deactivate();
-    stompClient = null;
+    try {
+      // Unsubscribe from all subscriptions first
+      subscriptions.forEach((sub) => {
+        try {
+          sub.unsubscribe();
+        } catch (e) {
+          console.warn('Error unsubscribing:', e);
+        }
+      });
+      subscriptions = [];
+      desiredSubscriptions = [];
+      
+      // Properly deactivate the client to send DISCONNECT frame
+      if (stompClient.connected) {
+        stompClient.deactivate();
+      } else {
+        // If not connected, just clean up
+        stompClient = null;
+      }
+    } catch (e) {
+      console.warn('Error during WebSocket disconnect:', e);
+      // Force cleanup even if there's an error
+      stompClient = null;
+    }
   }
 };
 
