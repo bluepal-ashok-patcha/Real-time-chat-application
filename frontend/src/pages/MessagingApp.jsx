@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Box, CircularProgress } from '@mui/material';
 import { useDispatch, useSelector } from 'react-redux';
 import Sidebar from '../components/Sidebar';
@@ -32,12 +32,15 @@ const MessagingApp = () => {
   const { selectedContact } = useSelector((state) => state.contacts);
   const { currentChat, messages } = useSelector((state) => state.messages);
   const { conversations } = useSelector((state) => state.conversations);
+  const { userStatus } = useSelector((state) => state.status);
   const groupSubscriptionRef = useRef(null);
   const groupTypingSubscriptionRef = useRef(null);
   const groupTypingTimersRef = useRef({});
   const currentChatRef = useRef(currentChat);
   const userRef = useRef(user);
   const selectedContactRef = useRef(selectedContact);
+  const conversationsRef = useRef(conversations);
+  const userStatusRef = useRef(userStatus);
 
   // Update refs whenever they change
   useEffect(() => {
@@ -51,6 +54,14 @@ const MessagingApp = () => {
   useEffect(() => {
     selectedContactRef.current = selectedContact;
   }, [selectedContact]);
+
+  useEffect(() => {
+    conversationsRef.current = conversations;
+  }, [conversations]);
+
+  useEffect(() => {
+    userStatusRef.current = userStatus;
+  }, [userStatus]);
 
   // Initialize WebSocket connection
   useEffect(() => {
@@ -237,24 +248,61 @@ const MessagingApp = () => {
         },
         onOnlineUsersUpdate: (onlineUsers) => {
           dispatch(updateOnlineUsers(onlineUsers));
+          
+          // Get latest values using refs to avoid stale closures
+          const latestConversations = conversationsRef.current;
+          const latestSelectedContact = selectedContactRef.current;
+          const latestUserStatus = userStatusRef.current;
+          
           // Map usernames to conversation userIds and update presence in real-time
-          if (Array.isArray(onlineUsers) && conversations && conversations.length) {
-            const offlineIds = [];
-            conversations.forEach((conv) => {
+          const offlineIds = [];
+          const onlineIds = [];
+          
+          // Update status for all users in conversations
+          if (Array.isArray(onlineUsers) && latestConversations && latestConversations.length) {
+            latestConversations.forEach((conv) => {
               if (conv.type === 'PRIVATE') {
                 if (onlineUsers.includes(conv.name)) {
                   dispatch(setUserOnline(conv.id));
+                  onlineIds.push(conv.id);
                 } else {
-                  dispatch(setUserOffline(conv.id));
-                  offlineIds.push(conv.id);
+                  // Check if they were online before - if so, they just went offline
+                  const currentStatus = latestUserStatus[conv.id];
+                  if (currentStatus === 'online') {
+                    // User just went offline, fetch last-seen immediately
+                    dispatch(fetchStatus([conv.id]));
+                  } else if (currentStatus !== 'online') {
+                    dispatch(setUserOffline(conv.id));
+                    offlineIds.push(conv.id);
+                  }
                 }
               }
             });
-
-            // Fetch last-seen for users that just became offline
-            if (offlineIds.length > 0) {
-              dispatch(fetchStatus(offlineIds));
+          }
+          
+          // Also update status for currently selected contact if it's a private chat
+          if (latestSelectedContact && latestSelectedContact.type === 'PRIVATE' && latestSelectedContact.username) {
+            const isSelectedContactOnline = onlineUsers.includes(latestSelectedContact.username);
+            if (isSelectedContactOnline) {
+              dispatch(setUserOnline(latestSelectedContact.id));
+              if (!onlineIds.includes(latestSelectedContact.id)) {
+                onlineIds.push(latestSelectedContact.id);
+              }
+            } else {
+              // Check if they were online before - if so, fetch last-seen immediately
+              const currentStatus = latestUserStatus[latestSelectedContact.id];
+              if (currentStatus === 'online') {
+                // User just went offline, fetch last-seen immediately
+                dispatch(fetchStatus([latestSelectedContact.id]));
+              } else if (currentStatus !== 'online' && !offlineIds.includes(latestSelectedContact.id)) {
+                offlineIds.push(latestSelectedContact.id);
+              }
             }
+          }
+          
+          // Fetch last-seen for users that just became offline (batch request)
+          if (offlineIds.length > 0) {
+            dispatch(fetchStatus(offlineIds));
           }
         },
       });
@@ -398,12 +446,20 @@ const MessagingApp = () => {
     );
   }
 
+  const [scrollToMessageId, setScrollToMessageId] = useState(null);
+
+  const handleMessageSelect = (messageId) => {
+    setScrollToMessageId(messageId);
+    // Clear after a delay to allow re-scrolling if needed
+    setTimeout(() => setScrollToMessageId(null), 2000);
+  };
+
   return (
     <Box className="flex h-screen overflow-hidden">
       <Sidebar />
       <Box className="flex-1 flex flex-col">
-        <ChatHeader selectedContact={selectedContact} />
-        <ChatWindow selectedContact={selectedContact} />
+        <ChatHeader selectedContact={selectedContact} onMessageSelect={handleMessageSelect} />
+        <ChatWindow selectedContact={selectedContact} scrollToMessageId={scrollToMessageId} />
         <MessageInput selectedContact={selectedContact} />
       </Box>
     </Box>

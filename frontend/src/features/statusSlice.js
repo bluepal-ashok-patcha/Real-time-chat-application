@@ -31,11 +31,13 @@ export const statusSlice = createSlice({
     },
     setUserOnline: (state, action) => {
       const userId = action.payload;
+      // Always update to online immediately
       state.userStatus[userId] = 'online';
     },
     setUserOffline: (state, action) => {
       const userId = action.payload;
-      // Mark as offline only if not explicitly online
+      // Only mark as offline if not currently online (to avoid race conditions)
+      // This allows online status to take precedence
       if (state.userStatus[userId] !== 'online') {
         state.userStatus[userId] = 'offline';
       }

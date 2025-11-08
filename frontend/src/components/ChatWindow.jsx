@@ -4,10 +4,11 @@ import MessageBubble from './MessageBubble';
 import { useSelector, useDispatch } from 'react-redux';
 import { markMessageAsRead, fetchMessages, fetchGroupMessages } from '../features/messagesSlice';
 
-const ChatWindow = ({ selectedContact }) => {
+const ChatWindow = ({ selectedContact, scrollToMessageId }) => {
   const dispatch = useDispatch();
   const messagesEndRef = useRef(null);
   const messagesContainerRef = useRef(null);
+  const messageRefs = useRef({});
   const { user } = useSelector((state) => state.auth);
   const { messages: messagesState, currentChat, typing, pagination } = useSelector((state) => state.messages);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
@@ -73,6 +74,56 @@ const ChatWindow = ({ selectedContact }) => {
       scrollToBottom();
     }
   }, [messagesState, currentChat]);
+
+  // Scroll to specific message when scrollToMessageId is set
+  useEffect(() => {
+    if (!scrollToMessageId || !messagesContainerRef.current || !currentChat) {
+      return;
+    }
+
+    let retryCount = 0;
+    const maxRetries = 5;
+    let retryInterval = null;
+    
+    const scrollToMessage = () => {
+      const messageElement = document.querySelector(`[data-message-id="${scrollToMessageId}"]`);
+      if (messageElement) {
+        messageElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Highlight the message briefly
+        messageElement.style.backgroundColor = '#fff3cd';
+        setTimeout(() => {
+          messageElement.style.backgroundColor = '';
+        }, 2000);
+        return true;
+      }
+      return false;
+    };
+
+    // Try to scroll immediately
+    if (!scrollToMessage()) {
+      // Message might not be rendered yet, retry with increasing delays
+      retryInterval = setInterval(() => {
+        retryCount++;
+        if (scrollToMessage() || retryCount >= maxRetries) {
+          if (retryInterval) {
+            clearInterval(retryInterval);
+            retryInterval = null;
+          }
+          if (retryCount >= maxRetries) {
+            // Still not found after multiple retries, scroll to bottom
+            scrollToBottom();
+          }
+        }
+      }, 300);
+    }
+    
+    // Cleanup interval on unmount or when scrollToMessageId changes
+    return () => {
+      if (retryInterval) {
+        clearInterval(retryInterval);
+      }
+    };
+  }, [scrollToMessageId, messagesState, currentChat]);
 
   // Mark messages as read when they become visible (for private chats)
   useEffect(() => {

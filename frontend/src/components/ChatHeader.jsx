@@ -7,8 +7,9 @@ import { removeContact } from '../features/contactsSlice';
 import { fetchStatus } from '../features/statusSlice';
 import api from '../services/api';
 import GroupInfoDrawer from './GroupInfoDrawer';
+import SearchDrawer from './SearchDrawer';
 
-const ChatHeader = ({ selectedContact }) => {
+const ChatHeader = ({ selectedContact, onMessageSelect }) => {
   const dispatch = useDispatch();
   const { user } = useSelector((state) => state.auth);
   const { typing } = useSelector((state) => state.messages);
@@ -17,6 +18,7 @@ const ChatHeader = ({ selectedContact }) => {
   const [menuAnchor, setMenuAnchor] = useState(null);
   const [groupUsers, setGroupUsers] = useState([]);
   const [groupInfoOpen, setGroupInfoOpen] = useState(false);
+  const [searchDrawerOpen, setSearchDrawerOpen] = useState(false);
 
   const isBlocked = blockedUsers?.some((b) => b?.blockedUser?.id === selectedContact?.id) || false;
   const contactStatus = selectedContact?.id ? userStatus[selectedContact.id] : null;
@@ -157,7 +159,7 @@ const ChatHeader = ({ selectedContact }) => {
             </IconButton>
           </>
         )}
-        <IconButton size="small" className="text-white">
+        <IconButton size="small" className="text-white" onClick={() => setSearchDrawerOpen(true)}>
           <Search />
         </IconButton>
         <IconButton size="small" className="text-white" onClick={handleMenuClick}>
@@ -185,6 +187,12 @@ const ChatHeader = ({ selectedContact }) => {
       {selectedContact?.type === 'GROUP' && (
         <GroupInfoDrawer open={groupInfoOpen} onClose={() => setGroupInfoOpen(false)} groupId={selectedContact?.id} />
       )}
+
+      <SearchDrawer
+        open={searchDrawerOpen}
+        onClose={() => setSearchDrawerOpen(false)}
+        onMessageSelect={onMessageSelect}
+      />
     </Box>
   );
 };
