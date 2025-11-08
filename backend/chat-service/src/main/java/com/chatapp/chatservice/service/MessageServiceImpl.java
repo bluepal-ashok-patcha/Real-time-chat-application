@@ -338,4 +338,11 @@ public class MessageServiceImpl implements MessageService {
         return conversations;
     }
 
+    @Override
+    public Page<MessageDto> searchMessages(Long userId, String query, Pageable pageable) {
+        log.info("MessageService.searchMessages userId={} query={} page={} size={}", userId, query, pageable.getPageNumber(), pageable.getPageSize());
+        Page<Message> messages = messageRepository.searchMessages(userId, query, pageable);
+        return messages.map(this::convertToDto);
+    }
+
 }

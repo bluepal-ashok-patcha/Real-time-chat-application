@@ -100,4 +100,12 @@ public class ChatController {
         return ResponseEntity.ok(messageService.getConversations(userId));
     }
 
+    @GetMapping("/messages/search")
+    public ResponseEntity<Page<MessageDto>> searchMessages(HttpServletRequest request,
+                                                           @RequestParam String query,
+                                                           Pageable pageable) {
+        Long userId = getUserIdFromRequest(request);
+        return ResponseEntity.ok(messageService.searchMessages(userId, query, pageable));
+    }
+
 }

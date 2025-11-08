@@ -19,4 +19,6 @@ public interface MessageService {
 
     java.util.List<com.chatapp.chatservice.dto.ConversationDto> getConversations(Long userId);
 
+    Page<MessageDto> searchMessages(Long userId, String query, Pageable pageable);
+
 }
