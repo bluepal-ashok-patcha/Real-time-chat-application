@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Box, List, ListItem, ListItemButton, Avatar, Typography, TextField, IconButton, Badge, Divider } from '@mui/material';
 import { Search as SearchIcon, MoreVert, Logout, Contacts as ContactsIcon, DoneAll } from '@mui/icons-material';
 import { useDispatch, useSelector } from 'react-redux';
@@ -13,6 +13,7 @@ import AddContactModal from './AddContactModal';
 import ProfileMenu from './ProfileMenu';
 import ProfileDrawer from './ProfileDrawer';
 import ContactListDrawer from './ContactListDrawer';
+import api from '../services/api';
 
 const Sidebar = () => {
   const dispatch = useDispatch();
@@ -28,6 +29,7 @@ const Sidebar = () => {
   const [profileMenuAnchor, setProfileMenuAnchor] = useState(null);
   const [profileDrawerOpen, setProfileDrawerOpen] = useState(false);
   const [imagePreview, setImagePreview] = useState({ open: false, src: '', title: '' });
+  const requestedGroupImagesRef = React.useRef(new Set());
 
   useEffect(() => {
     dispatch(fetchConversations());
@@ -37,40 +39,26 @@ const Sidebar = () => {
     return () => clearInterval(interval);
   }, [dispatch]);
 
-  const fetchedGroupImagesRef = useRef(new Set());
-
+  // Preload missing group images for conversations (so avatars show without clicking or refreshing)
   useEffect(() => {
-    const fetchGroupImages = async () => {
-      const pendingGroups = conversations.filter(
-        (conv) => conv.type === 'GROUP' && !conv.profilePictureUrl && !fetchedGroupImagesRef.current.has(conv.id)
-      );
-
-      if (pendingGroups.length === 0) return;
-
-      try {
-        const apiModule = await import('../services/api');
-        const api = apiModule.default;
-
-        await Promise.all(
-          pendingGroups.map(async (group) => {
-            try {
-              const res = await api.get(`/groups/${group.id}`);
-              const imageUrl = res.data?.imageUrl || null;
-              fetchedGroupImagesRef.current.add(group.id);
-              dispatch(setConversationImage({ id: group.id, type: 'GROUP', imageUrl }));
-            } catch (error) {
-              fetchedGroupImagesRef.current.add(group.id);
-            }
-          })
-        );
-      } catch (_) {
-        // ignore top-level errors, individual group fetches already handled
+    const fetchMissingGroupImages = async () => {
+      const toFetch = (conversations || [])
+        .filter((c) => c.type === 'GROUP' && !c.profilePictureUrl && !requestedGroupImagesRef.current.has(c.id));
+      if (toFetch.length === 0) return;
+      for (const c of toFetch) {
+        requestedGroupImagesRef.current.add(c.id);
+        try {
+          const res = await api.get(`/groups/${c.id}`);
+          const imageUrl = res.data?.imageUrl || null;
+          if (imageUrl) {
+            dispatch(setConversationImage({ id: c.id, type: 'GROUP', imageUrl }));
+          }
+        } catch (_) {
+          // ignore
+        }
       }
     };
-
-    if (conversations && conversations.length) {
-      fetchGroupImages();
-    }
+    fetchMissingGroupImages();
   }, [conversations, dispatch]);
 
   const handleLogout = () => {
@@ -93,7 +81,6 @@ const Sidebar = () => {
       try {
         const res = await (await import('../services/api')).default.get(`/groups/${conversation.id}`);
         const imageUrl = res.data?.imageUrl || null;
-        fetchedGroupImagesRef.current.add(conversation.id);
         dispatch(setConversationImage({ id: conversation.id, type: 'GROUP', imageUrl }));
         dispatch(selectContact({
           id: conversation.id,

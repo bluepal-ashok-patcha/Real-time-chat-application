@@ -70,7 +70,7 @@ const ProfileDrawer = ({ open, onClose }) => {
           value={about}
           onChange={(e) => setAbout(e.target.value)}
           margin="dense"
-          multiline
+          // multiline
           rows={3}
           variant="standard"
           placeholder="Hey there! I am using ChatApp."

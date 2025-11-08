@@ -67,8 +67,8 @@ const RegisterPage = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        py: { xs: 6, md: 8 },
-        px: { xs: 2, md: 4 },
+        py: { xs: 6, md: 2 },
+        px: { xs: 2, md: 2 },
       }}
     >
       <Paper
@@ -87,7 +87,8 @@ const RegisterPage = () => {
               flex: { xs: 'unset', md: '0 0 40%' },
               background: 'linear-gradient(160deg, rgba(7,94,84,0.95) 0%, rgba(7,94,84,0.85) 100%)',
               color: '#fff',
-              p: { xs: 4, md: 6 },
+              px: { xs: 4, md: 6 },
+               py: { xs: 4, md: 3 },
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
@@ -117,13 +118,19 @@ const RegisterPage = () => {
                 • Secure, reliable, and built for modern collaboration
               </Typography>
             </Box>
+            <Box className="height-full w-full md:w-1">
+
           </Box>
+          
+          </Box>
+          
 
           <Box
             sx={{
               flex: 1,
               backgroundColor: '#ffffff',
-              p: { xs: 4, md: 6 },
+              px: { xs: 4, md: 6 },
+               py: { xs: 4, md: 3 },
             }}
           >
             <Typography variant="h4" sx={{ fontWeight: 600, color: '#075e54', mb: 1 }}>

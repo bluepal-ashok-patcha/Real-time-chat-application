@@ -9,10 +9,12 @@ import com.chatapp.chatservice.model.GroupUser;
 import com.chatapp.chatservice.repository.GroupRepository;
 import com.chatapp.chatservice.repository.GroupUserRepository;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class GroupServiceImpl implements GroupService {
 
     private final GroupRepository groupRepository;
@@ -30,6 +32,7 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     public GroupDto createGroup(GroupDto groupDto) {
+        log.info("GroupService.createGroup name={} createdBy={}", groupDto.getName(), groupDto.getCreatedBy());
         Group group = Group.builder()
                 .name(groupDto.getName())
                 .createdBy(groupDto.getCreatedBy())
@@ -38,11 +41,14 @@ public class GroupServiceImpl implements GroupService {
                 .build();
         groupRepository.save(group);
         groupUserRepository.save(GroupUser.builder().groupId(group.getId()).userId(group.getCreatedBy()).build());
-        return convertToDto(group);
+        GroupDto dto = convertToDto(group);
+        log.debug("GroupService.createGroup success groupId={}", dto.getId());
+        return dto;
     }
 
     @Override
     public GroupDto addUserToGroup(Long groupId, Long userId) {
+        log.info("GroupService.addUserToGroup groupId={} userId={}", groupId, userId);
         Group group = groupRepository.findById(groupId).orElseThrow(() -> new RuntimeException("Group not found"));
         userDao.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
         if (contactDao.findByUserIdAndContactId(group.getCreatedBy(), userId).isEmpty()) {
@@ -54,6 +60,7 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     public GroupDto removeUserFromGroup(Long groupId, Long userId) {
+        log.info("GroupService.removeUserFromGroup groupId={} userId={}", groupId, userId);
         groupUserRepository.deleteById(new GroupUser.GroupUserId(groupId, userId));
         Group group = groupRepository.findById(groupId).orElseThrow(() -> new RuntimeException("Group not found"));
         return convertToDto(group);
@@ -61,12 +68,14 @@ public class GroupServiceImpl implements GroupService {
 
     @Override
     public GroupDto getGroup(Long groupId) {
+        log.debug("GroupService.getGroup groupId={}", groupId);
         Group group = groupRepository.findById(groupId).orElseThrow(() -> new RuntimeException("Group not found"));
         return convertToDto(group);
     }
 
     @Override
     public GroupDto updateGroup(Long groupId, GroupDto update) {
+        log.info("GroupService.updateGroup groupId={} name?={} image?={} ", groupId, update.getName()!=null, update.getImageUrl()!=null);
         Group group = groupRepository.findById(groupId).orElseThrow(() -> new RuntimeException("Group not found"));
         if (update.getName() != null && !update.getName().isBlank()) {
             group.setName(update.getName());

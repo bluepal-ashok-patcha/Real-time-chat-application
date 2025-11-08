@@ -126,18 +126,18 @@ public class WebSocketEventListener {
             Set<String> remainingSessions = redisTemplate.opsForSet().members(USER_SESSION_KEY_PREFIX + username);
             if (remainingSessions == null || remainingSessions.isEmpty()) {
                 // No more active sessions, mark user as offline
-                redisTemplate.opsForSet().remove(ONLINE_USERS_KEY, username);
-                redisTemplate.opsForValue().set(LAST_SEEN_KEY_PREFIX + username, String.valueOf(Instant.now().toEpochMilli()));
+            redisTemplate.opsForSet().remove(ONLINE_USERS_KEY, username);
+            redisTemplate.opsForValue().set(LAST_SEEN_KEY_PREFIX + username, String.valueOf(Instant.now().toEpochMilli()));
                 
                 // Clean up user session tracking key
                 redisTemplate.delete(USER_SESSION_KEY_PREFIX + username);
 
-                ChatMessage chatMessage = new ChatMessage();
-                chatMessage.setType(MessageType.LEAVE);
-                chatMessage.setSender(username);
-                chatMessage.setContent(String.join(",", getOnlineUsers()));
+            ChatMessage chatMessage = new ChatMessage();
+            chatMessage.setType(MessageType.LEAVE);
+            chatMessage.setSender(username);
+            chatMessage.setContent(String.join(",", getOnlineUsers()));
 
-                messagingTemplate.convertAndSend("/topic/public", chatMessage);
+            messagingTemplate.convertAndSend("/topic/public", chatMessage);
             } else {
                 logger.debug("User {} still has {} active session(s)", username, remainingSessions.size());
             }

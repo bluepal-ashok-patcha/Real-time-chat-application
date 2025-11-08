@@ -15,12 +15,14 @@ import com.chatapp.chatservice.repository.MessageStatusRepository;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
+@Slf4j
 public class MessageServiceImpl implements MessageService {
 
     private final MessageRepository messageRepository;
@@ -48,10 +50,12 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public MessageDto sendMessage(Long senderId, MessageDto messageDto) {
+        log.info("MessageService.sendMessage senderId={} groupId={} receiverId={}", senderId, messageDto.getGroupId(), messageDto.getReceiver()!=null?messageDto.getReceiver().getId():null);
         messageDto.setSender(UserDto.builder().id(senderId).build());
         if (messageDto.getGroupId() != null) {
             if (groupUserRepository.findByGroupId(messageDto.getGroupId()).stream()
                     .noneMatch(groupUser -> groupUser.getUserId().equals(senderId))) {
+                log.warn("MessageService.sendMessage not a member senderId={} groupId={}", senderId, messageDto.getGroupId());
                 throw new RuntimeException("You are not a member of this group");
             }
         } else {
@@ -59,6 +63,7 @@ public class MessageServiceImpl implements MessageService {
                 throw new IllegalArgumentException("Receiver cannot be null for private messages");
             }
             if (blockDao.findByUserIdAndBlockedUserId(messageDto.getReceiver().getId(), senderId).isPresent()) {
+                log.info("MessageService.sendMessage blocked senderId={} receiverId={}", senderId, messageDto.getReceiver().getId());
                 throw new RuntimeException("You have been blocked by this user");
             }
         }
@@ -86,11 +91,13 @@ public class MessageServiceImpl implements MessageService {
         }
 
         kafkaProducer.sendMessage(convertToDto(savedMessage));
+        log.debug("MessageService.sendMessage persisted messageId={} groupId={} status={}", savedMessage.getId(), savedMessage.getGroupId(), savedMessage.getStatus());
         return convertToDto(savedMessage);
     }
 
     @Override
     public Page<MessageDto> getChatHistory(Long userId1, Long userId2, Pageable pageable) {
+        log.debug("MessageService.getChatHistory u1={} u2={} page={} size={}", userId1, userId2, pageable.getPageNumber(), pageable.getPageSize());
         Page<Message> messages = messageRepository.findBySenderIdAndReceiverIdOrReceiverIdAndSenderIdOrderByTimestampDesc(
                 userId1, userId2, userId1, userId2, pageable);
         return messages.map(this::convertToDto);
@@ -98,12 +105,14 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public Page<MessageDto> getGroupChatHistory(Long groupId, Pageable pageable) {
+        log.debug("MessageService.getGroupChatHistory groupId={} page={} size={}", groupId, pageable.getPageNumber(), pageable.getPageSize());
         Page<Message> messages = messageRepository.findByGroupIdOrderByTimestampDesc(groupId, pageable);
         return messages.map(this::convertToDto);
     }
 
     @Override
     public void markMessageAsRead(Long userId, Long messageId) {
+        log.debug("MessageService.markMessageAsRead userId={} messageId={} ", userId, messageId);
         Message message = messageRepository.findById(messageId)
                 .orElseThrow(() -> new RuntimeException("Message not found"));
 
@@ -131,6 +140,7 @@ public class MessageServiceImpl implements MessageService {
                                     .map(user -> user.getUsername())
                                     .orElse("Unknown"))
                             .build());
+                    log.trace("MessageService.markMessageAsRead sent group read receipt messageId={} to senderId={}", messageId, sender.getId());
                 });
             }
         } else {
@@ -150,6 +160,7 @@ public class MessageServiceImpl implements MessageService {
                                     .map(user -> user.getUsername())
                                     .orElse("Unknown"))
                             .build());
+                    log.trace("MessageService.markMessageAsRead sent private read receipt messageId={} senderId={}", messageId, message.getSenderId());
                 }
             }
         }
@@ -157,6 +168,7 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public MessageInfoDto getMessageInfo(Long messageId) {
+        log.debug("MessageService.getMessageInfo messageId={}", messageId);
         Message message = messageRepository.findById(messageId)
                 .orElseThrow(() -> new RuntimeException("Message not found"));
 
@@ -220,10 +232,12 @@ public class MessageServiceImpl implements MessageService {
             }
         }
 
-        return MessageInfoDto.builder()
+        MessageInfoDto dto = MessageInfoDto.builder()
                 .readBy(readBy.stream().filter(java.util.Objects::nonNull).collect(Collectors.toList()))
                 .deliveredTo(deliveredTo.stream().filter(java.util.Objects::nonNull).collect(Collectors.toList()))
                 .build();
+        log.trace("MessageService.getMessageInfo result readBy={} deliveredTo={}", dto.getReadBy()!=null?dto.getReadBy().size():0, dto.getDeliveredTo()!=null?dto.getDeliveredTo().size():0);
+        return dto;
     }
 
     private MessageDto convertToDto(Message message) {
@@ -246,6 +260,7 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public java.util.List<com.chatapp.chatservice.dto.ConversationDto> getConversations(Long userId) {
+        log.debug("MessageService.getConversations userId={}", userId);
         java.util.List<com.chatapp.chatservice.dto.ConversationDto> conversations = new java.util.ArrayList<>();
 
         // Get private conversations
@@ -319,6 +334,7 @@ public class MessageServiceImpl implements MessageService {
             return c2.getLastMessageTimestamp().compareTo(c1.getLastMessageTimestamp());
         });
 
+        log.trace("MessageService.getConversations count={}", conversations.size());
         return conversations;
     }
 

@@ -15,8 +15,10 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
+@Slf4j
 public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
@@ -34,6 +36,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public User register(RegisterRequest registerRequest) {
+        log.info("AuthService.register username={} email={} ", registerRequest.getUsername(), registerRequest.getEmail());
         if (userRepository.findByUsername(registerRequest.getUsername()).isPresent()) {
             throw new UsernameAlreadyExistsException("Username is already taken");
         }
@@ -49,11 +52,14 @@ public class AuthServiceImpl implements AuthService {
                 .role(Role.USER)
                 .build();
 
-        return userRepository.save(user);
+        User saved = userRepository.save(user);
+        log.info("AuthService.register success id={}", saved.getId());
+        return saved;
     }
 
     @Override
     public AuthResponse login(AuthRequest authRequest) {
+        log.info("AuthService.login username={} ", authRequest.getUsername());
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(authRequest.getUsername(), authRequest.getPassword()));
 
@@ -61,21 +67,25 @@ public class AuthServiceImpl implements AuthService {
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
         User user = userRepository.findByUsername(userDetails.getUsername()).get();
         String jwt = jwtUtil.generateToken(user);
-
+        log.debug("AuthService.login token generated for userId={} ", user.getId());
         return AuthResponse.builder().token(jwt).build();
     }
 
     @Override
     public User getUserById(Long id) {
+        log.debug("AuthService.getUserById id={}", id);
         return userRepository.findById(id).orElseThrow(() -> new RuntimeException("User not found"));
     }
 
     @Override
     public User updateProfile(Long userId, ProfileUpdateRequest profileUpdateRequest) {
+        log.info("AuthService.updateProfile userId={} ", userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
         user.setProfilePictureUrl(profileUpdateRequest.getProfilePictureUrl());
         user.setAbout(profileUpdateRequest.getAbout());
-        return userRepository.save(user);
+        User updated = userRepository.save(user);
+        log.debug("AuthService.updateProfile updated userId={}", updated.getId());
+        return updated;
     }
 }

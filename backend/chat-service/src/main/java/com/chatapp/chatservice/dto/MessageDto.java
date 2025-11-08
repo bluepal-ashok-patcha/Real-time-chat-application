@@ -1,6 +1,8 @@
 package com.chatapp.chatservice.dto;
 
 import com.chatapp.chatservice.model.MessageType;
+
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -14,14 +16,17 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class MessageDto {
 
+	
     private Long id;
 
     private UserDto sender;
 
+    
     private UserDto receiver;
 
     private Long groupId;
 
+    @NotBlank(message = "content is required")
     private String content;
 
     private LocalDateTime timestamp;

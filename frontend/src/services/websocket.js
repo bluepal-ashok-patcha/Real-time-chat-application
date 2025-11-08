@@ -203,12 +203,12 @@ export const disconnectWebSocket = () => {
           console.warn('Error unsubscribing:', e);
         }
       });
-      subscriptions = [];
-      desiredSubscriptions = [];
+    subscriptions = [];
+    desiredSubscriptions = [];
       
       // Properly deactivate the client to send DISCONNECT frame
       if (stompClient.connected) {
-        stompClient.deactivate();
+    stompClient.deactivate();
       } else {
         // If not connected, just clean up
         stompClient = null;
@@ -216,7 +216,7 @@ export const disconnectWebSocket = () => {
     } catch (e) {
       console.warn('Error during WebSocket disconnect:', e);
       // Force cleanup even if there's an error
-      stompClient = null;
+    stompClient = null;
     }
   }
 };

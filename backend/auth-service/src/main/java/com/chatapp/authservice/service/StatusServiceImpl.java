@@ -4,6 +4,7 @@ import com.chatapp.authservice.dto.StatusDto;
 import com.chatapp.authservice.repository.UserRepository;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.HashMap;
 import java.util.List;
@@ -11,6 +12,7 @@ import java.util.Map;
 import java.util.Set;
 
 @Service
+@Slf4j
 public class StatusServiceImpl implements StatusService {
 
     private final RedisTemplate<String, String> redisTemplate;
@@ -23,6 +25,7 @@ public class StatusServiceImpl implements StatusService {
 
     @Override
     public StatusDto getStatus(List<Long> userIds) {
+        log.debug("StatusService.getStatus size={}", userIds != null ? userIds.size() : 0);
         Map<Long, String> status = new HashMap<>();
         Set<String> onlineUsers = redisTemplate.opsForSet().members("online-users");
         for (Long userId : userIds) {
@@ -34,6 +37,7 @@ public class StatusServiceImpl implements StatusService {
                 status.put(userId, lastSeen != null ? lastSeen : "offline");
             }
         }
+        log.trace("StatusService.getStatus resultKeys={}", status.keySet());
         return StatusDto.builder().status(status).build();
     }
 }
