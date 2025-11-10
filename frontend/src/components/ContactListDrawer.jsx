@@ -338,7 +338,7 @@ const ContactListDrawer = ({ open, onClose }) => {
             <ListItemAvatar>
               <Avatar>{c.identifier?.[0]?.toUpperCase()}</Avatar>
             </ListItemAvatar>
-            <ListItemText primary={c.inviteUsername || c.identifier} secondary={c.inviteEmail || 'Not on ChatApp'} />
+            <ListItemText primary={c.inviteUsername || c.identifier} secondary={c.phoneNumber || 'Not on ChatApp'} />
           </ListItem>
         ))}
         {inviteContacts.length === 0 && (

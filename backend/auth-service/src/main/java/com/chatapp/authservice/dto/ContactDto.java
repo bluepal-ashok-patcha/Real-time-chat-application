@@ -1,5 +1,6 @@
 package com.chatapp.authservice.dto;
 
+import jakarta.persistence.Column;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -27,5 +28,8 @@ public class ContactDto {
     private String inviteUsername;
 
     private String inviteEmail;
+    
+    
+    private String phoneNumber;
 
 }

@@ -173,6 +173,7 @@ public class ContactServiceImpl implements ContactService {
                         ? request.getUsername().trim() : normalized)
                 .inviteUsername(request != null ? request.getUsername() : null)
                 .inviteEmail(request != null ? request.getEmail() : null)
+                .phoneNumber(request != null ? request.getPhoneNumber() : null)
                 .build();
         contactRepository.save(placeholder);
         log.debug("ContactService.addContactByIdentifier created invite placeholder id={}", placeholder.getId());
@@ -203,6 +204,7 @@ public class ContactServiceImpl implements ContactService {
                     .username(contact.getContact().getUsername())
                     .profilePictureUrl(contact.getContact().getProfilePictureUrl())
                     .about(contact.getContact().getAbout())
+                    .phoneNumber(contact.getContact().getPhoneNumber())
                     .build();
         }
 
@@ -219,6 +221,10 @@ public class ContactServiceImpl implements ContactService {
                 .identifier(contact.getIdentifier())
                 .inviteUsername(contact.getInviteUsername())
                 .inviteEmail(contact.getInviteEmail())
+                .phoneNumber(contact.getPhoneNumber() != null 
+                ? contact.getPhoneNumber() 
+                : (contact.getContact() != null ? contact.getContact().getPhoneNumber() : null))
+        
                 .build();
     }
 

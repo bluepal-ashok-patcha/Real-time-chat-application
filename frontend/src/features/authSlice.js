@@ -1,8 +1,8 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../services/api';
 
-export const register = createAsyncThunk('auth/register', async ({ username, email, password }) => {
-  const response = await api.post('/auth/register', { username, email, password });
+export const register = createAsyncThunk('auth/register', async ({ username, email, password,phoneNumber }) => {
+  const response = await api.post('/auth/register', { username, email, password ,phoneNumber});
   return response.data;
 });
 

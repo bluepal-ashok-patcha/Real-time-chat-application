@@ -23,5 +23,7 @@ public class UserDto {
     private String profilePictureUrl;
 
     private String about;
+    
+    private String phoneNumber;
 
 }

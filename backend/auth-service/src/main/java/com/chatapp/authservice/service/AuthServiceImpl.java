@@ -49,6 +49,7 @@ public class AuthServiceImpl implements AuthService {
                 .username(registerRequest.getUsername())
                 .email(registerRequest.getEmail())
                 .password(passwordEncoder.encode(registerRequest.getPassword()))
+                .phoneNumber(registerRequest.getPhoneNumber())
                 .role(Role.USER)
                 .build();
 

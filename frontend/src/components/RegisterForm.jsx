@@ -8,12 +8,13 @@ const RegisterForm = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [phoneNumber, setPhoneNumber] = useState('');
   const navigate = useNavigate();
 
   const handleRegister = async () => {
     setLoading(true);
     try {
-      await axios.post('http://localhost:8080/api/auth/register', { username, email, password });
+      await axios.post('http://localhost:8080/api/auth/register', { username, email, password, phoneNumber  });
       console.log('Registration successful, navigating to login...');
       navigate('/login');
     } catch (error) {
@@ -83,6 +84,17 @@ const RegisterForm = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
+            <TextField
+  margin="normal"
+  required
+  fullWidth
+  id="phoneNumber"
+  label="Phone Number"
+  name="phoneNumber"
+  autoComplete="tel"
+  value={phoneNumber}
+  onChange={(e) => setPhoneNumber(e.target.value)}
+/>
             <TextField
               margin="normal"
               required

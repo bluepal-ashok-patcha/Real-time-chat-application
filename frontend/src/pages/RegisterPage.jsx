@@ -29,13 +29,17 @@ const RegisterPage = () => {
     confirmPassword: Yup.string()
       .required('Please confirm your password')
       .oneOf([Yup.ref('password'), null], 'Passwords must match'),
+      phoneNumber: Yup.string()
+    .trim()
+    .required('Phone number is required')
+    .matches(/^[0-9]{10}$/, 'Enter a valid 10-digit phone number'),
   });
 
   const handleRegister = async (values) => {
     setLoading(true);
     setSubmitError('');
     try {
-      await dispatch(register({ username: values.username, email: values.email, password: values.password })).unwrap();
+      await dispatch(register({ username: values.username, email: values.email, password: values.password, phoneNumber: values.phoneNumber})).unwrap();
       // Auto login after registration
       await dispatch(login({ username: values.username, password: values.password })).unwrap();
       navigate('/chat');
@@ -51,7 +55,9 @@ const RegisterPage = () => {
       username: '',
       email: '',
       password: '',
-      confirmPassword: '',
+      confirmPassword: '', 
+      phoneNumber: ''
+
     },
     validationSchema: registerSchema,
     onSubmit: handleRegister,
@@ -167,6 +173,19 @@ const RegisterPage = () => {
                 error={Boolean(formik.touched.email && formik.errors.email)}
                 helperText={formik.touched.email && formik.errors.email}
               />
+              <TextField
+  fullWidth
+  label="Phone Number"
+  margin="normal"
+  name="phoneNumber"
+  value={formik.values.phoneNumber}
+  onChange={formik.handleChange}
+  onBlur={formik.handleBlur}
+  required
+  error={Boolean(formik.touched.phoneNumber && formik.errors.phoneNumber)}
+  helperText={formik.touched.phoneNumber && formik.errors.phoneNumber}
+/>
+
               <TextField
                 fullWidth
                 label="Password"

@@ -36,5 +36,8 @@ public class Contact {
     private String inviteUsername;
 
     private String inviteEmail;
+    
+    @Column(unique = true)
+    private String phoneNumber;
 
 }

@@ -22,5 +22,8 @@ public class RegisterRequest {
 
     @NotBlank(message = "Password is required")
     private String password;
+    
+ // Optional, but can also make it required
+    private String phoneNumber;
 
 }
